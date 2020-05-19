@@ -268,6 +268,13 @@ Governance and Policies
 documents the process through which you can become a committer in this project.
 
 
+Logging Guidelines
+------------------
+* Never, ever, use `System.out` and `System.err` or `printStackTrace()` anywhere, but `LOG.info()` or `LOG.error()` instead.
+* When catching exceptions, either rethrow them, or log them.  Either way, include the root cause by using `catch (SomeException e)` and then either `throw AnotherException("..details..", e)` or `LOG.error("...context...", e)`.
+* In tests, you'll typically never catch exceptions, but just propagate them, with `@Test void testXYZ() throws SomeException, AnotherException`...`, so that the test fails if the exception happens.  Unless you actually really want to test for the occurence of a problem - in that case, use [JUnit's Assert.assertThrows()](https://github.com/junit-team/junit4/wiki/Exception-testing) (but not `@Test(expected = SomeException.class)`).
+* Never catch `NullPointerException` & Co.
+
 Pull Requests
 -------------
 
