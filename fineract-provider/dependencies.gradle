@@ -44,7 +44,6 @@ dependencies {
             'com.sun.jersey.contribs:jersey-multipart',
 
             'joda-time:joda-time',
-            'com.google.guava:guava',
             'com.google.code.gson:gson',
             'com.sun.jersey:jersey-core',
             'com.squareup.retrofit:retrofit',
@@ -72,7 +71,9 @@ dependencies {
 
              // JAX-B dependencies for JDK 9+
              "jakarta.xml.bind:jakarta.xml.bind-api",
-             "org.dom4j:dom4j"
+             "org.dom4j:dom4j",
+
+             'com.github.spotbugs:spotbugs-annotations',
     )
     implementation ('io.swagger:swagger-jersey-jaxrs') {
 		exclude group: 'javax.validation'
