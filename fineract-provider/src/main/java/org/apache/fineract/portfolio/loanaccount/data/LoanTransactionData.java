@@ -253,13 +253,13 @@ public class LoanTransactionData {
 
     public LoanTransactionData(Long id, LoanTransactionEnumData transactionType, LocalDate date, BigDecimal totalAmount,
             BigDecimal principalPortion, BigDecimal interestPortion, BigDecimal feeChargesPortion, BigDecimal penaltyChargesPortion,
-            BigDecimal overPaymentPortion, BigDecimal unrecognizedIncomePortion, BigDecimal outstandingLoanBalance,final boolean manuallyReversed) {
+            BigDecimal overpaymentPortion, BigDecimal unrecognizedIncomePortion, BigDecimal outstandingLoanBalance,final boolean manuallyReversed) {
         this(id, null, null, transactionType, null, null, date, totalAmount, principalPortion, interestPortion, feeChargesPortion,
-                penaltyChargesPortion, overPaymentPortion, unrecognizedIncomePortion, null, null, null, null, outstandingLoanBalance, null,
+                penaltyChargesPortion, overpaymentPortion, unrecognizedIncomePortion, null, null, null, null, outstandingLoanBalance, null,
                 manuallyReversed);
     }
 
-    public static LoanTransactionData LoanTransactionDataForDisbursalTemplate(final LoanTransactionEnumData transactionType, final LocalDate expectedDisbursedOnLocalDateForTemplate,
+    public static LoanTransactionData loanTransactionDataForDisbursalTemplate(final LoanTransactionEnumData transactionType, final LocalDate expectedDisbursedOnLocalDateForTemplate,
             final BigDecimal disburseAmountForTemplate,    final Collection<PaymentTypeData> paymentOptions,
             final BigDecimal retriveLastEmiAmount, final LocalDate possibleNextRepaymentDate) {
             final Long id = null;

@@ -107,15 +107,15 @@ public class GlobalConfigurationProperty extends AbstractPersistableCustom {
 
         final String dateValueParamName = "dateValue";
         if(command.isChangeInDateParameterNamed(dateValueParamName, this.dateValue)){
-            final Date newDateValue = command.DateValueOfParameterNamed(dateValueParamName);
+            final Date newDateValue = command.dateValueOfParameterNamed(dateValueParamName);
             actualChanges.put(dateValueParamName, newDateValue);
             this.dateValue = newDateValue;
         }
 
         final String passwordPropertyName = "force-password-reset-days";
         if (this.name.equalsIgnoreCase(passwordPropertyName)) {
-            if (this.enabled == true && command.hasParameter(valueParamName) && this.value == 0 || this.enabled == true
-                    && !command.hasParameter(valueParamName) && previousValue == 0) { throw new ForcePasswordResetException(); }
+            if ((this.enabled == true && command.hasParameter(valueParamName) && (this.value == 0)) || (this.enabled == true
+                    && !command.hasParameter(valueParamName) && (previousValue == 0))) { throw new ForcePasswordResetException(); }
         }
 
         return actualChanges;

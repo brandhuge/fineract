@@ -229,7 +229,7 @@ public class DepositAccountData {
 
     protected DepositAccountData(final Long id, final String accountNo, final String externalId, final Long groupId,
             final String groupName, final Long clientId, final String clientName, final Long productId, final String productName,
-            final Long fieldofficerId, final String fieldofficerName, final SavingsAccountStatusEnumData status,
+            final Long fieldOfficerId, final String fieldOfficerName, final SavingsAccountStatusEnumData status,
             final SavingsAccountApplicationTimelineData timeline, final CurrencyData currency, final BigDecimal nominalAnnualInterestRate,
             final EnumOptionData interestPeriodType, final EnumOptionData interestPostingPeriodType,
             final EnumOptionData interestCalculationType, final EnumOptionData interestCalculationDaysInYearType,
@@ -255,8 +255,8 @@ public class DepositAccountData {
         this.clientName = clientName;
         this.depositProductId = productId;
         this.depositProductName = productName;
-        this.fieldOfficerId = fieldofficerId;
-        this.fieldOfficerName = fieldofficerName;
+        this.fieldOfficerId = fieldOfficerId;
+        this.fieldOfficerName = fieldOfficerName;
         this.status = status;
         this.timeline = timeline;
         this.currency = currency;
@@ -298,14 +298,18 @@ public class DepositAccountData {
 
     private SavingsAccountChargeData getWithdrawalFee() {
         for (SavingsAccountChargeData charge : this.charges()) {
-            if (charge.isWithdrawalFee()) return charge;
+            if (charge.isWithdrawalFee()) {
+                return charge;
+            }
         }
         return null;
     }
 
     private SavingsAccountChargeData getAnnualFee() {
         for (SavingsAccountChargeData charge : this.charges()) {
-            if (charge.isAnnualFee()) return charge;
+            if (charge.isAnnualFee()) {
+                return charge;
+            }
         }
         return null;
     }
@@ -335,7 +339,7 @@ public class DepositAccountData {
 
         if (obj == null) { return false; }
         if (obj == this) { return true; }
-        if (obj.getClass() != getClass()) { return false; }
+        if (!(obj instanceof DepositAccountData)) { return false; }
         final DepositAccountData rhs = (DepositAccountData) obj;
         return new EqualsBuilder().append(this.id, rhs.id).append(this.accountNo, rhs.accountNo).isEquals();
     }

@@ -29,6 +29,7 @@ import static org.apache.fineract.portfolio.interestratechart.InterestRateChartS
 import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -163,7 +164,7 @@ public class InterestRateChartSlabFields {
 
     public boolean isFromPeriodGreaterThanToPeriod() {
         boolean isGreater = false;
-        if (this.toPeriod != null && this.fromPeriod.compareTo(this.toPeriod) > 1) {
+        if (this.toPeriod != null && this.fromPeriod.compareTo(this.toPeriod) > 0) {
             isGreater = true;
         }
         return isGreater;
@@ -171,7 +172,7 @@ public class InterestRateChartSlabFields {
 
     public boolean isAmountRangeFromGreaterThanTo() {
         boolean isGreater = false;
-        if (this.amountRangeFrom != null && this.amountRangeTo != null && this.amountRangeFrom.compareTo(this.amountRangeTo) > 1) {
+        if (this.amountRangeFrom != null && this.amountRangeTo != null && this.amountRangeFrom.compareTo(this.amountRangeTo) > 0) {
             isGreater = true;
         }
         return isGreater;
@@ -281,8 +282,8 @@ public class InterestRateChartSlabFields {
             return true;
         } else if (this.amountRangeTo == null) {
             return true;
-        } else if (that.amountRangeTo == null) { return that.amountRangeFrom.compareTo(this.amountRangeTo) < 1; }
-        return this.amountRangeFrom.compareTo(that.amountRangeTo) < 1 && that.amountRangeFrom.compareTo(this.amountRangeTo) < 1;
+        } else if (that.amountRangeTo == null) { return that.amountRangeFrom.compareTo(this.amountRangeTo) <= 0; }
+        return this.amountRangeFrom.compareTo(that.amountRangeTo) <= 0 && that.amountRangeFrom.compareTo(this.amountRangeTo) <= 0;
     }
 
     public boolean isAmountSame(final InterestRateChartSlabFields that) {
@@ -295,7 +296,7 @@ public class InterestRateChartSlabFields {
 
     public boolean isIntegerSame(final Integer obj1, final Integer obj2) {
         if (obj1 == null || obj2 == null) {
-            if (obj1 == obj2) { return true; }
+            if (Objects.equals(obj1, obj2)) { return true; }
             return false;
         }
         return obj1.equals(obj2);
@@ -303,7 +304,7 @@ public class InterestRateChartSlabFields {
 
     public boolean isBigDecimalSame(final BigDecimal obj1, final BigDecimal obj2) {
         if (obj1 == null || obj2 == null) {
-            if (obj1 == obj2) { return true; }
+            if (Objects.equals(obj1, obj2)) { return true; }
             return false;
         }
         return obj1.compareTo(obj2) == 0;

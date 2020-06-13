@@ -292,6 +292,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
                 this.amountWaived = null;
                 this.amountWrittenOff = null;
             break;
+            default:
         }
     }
 
@@ -420,6 +421,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
                     this.amountPercentageAppliedTo = null;
                     this.amountOutstanding = null;
                 break;
+                default:
             }
         }
     }
@@ -494,6 +496,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
                     this.amountPercentageAppliedTo = null;
                     this.amountOutstanding = null;
                 break;
+                default:
             }
         }
 
@@ -501,7 +504,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
     }
 
     private boolean isGreaterThanZero(final BigDecimal value) {
-        return value.compareTo(BigDecimal.ZERO) == 1;
+        return value.compareTo(BigDecimal.ZERO) > 0;
     }
 
     public LocalDate getDueLocalDate() {
@@ -694,8 +697,12 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof SavingsAccountCharge)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof SavingsAccountCharge)) {
+            return false;
+        }
         SavingsAccountCharge that = (SavingsAccountCharge) o;
         return Objects.equals(penaltyCharge, that.penaltyCharge) &&
                Objects.equals(paid, that.paid) &&
@@ -836,7 +843,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom {
 
     public boolean isChargeIsOverPaid(final LocalDate nextDueDate) {
         final BigDecimal amountPaid = this.amountPaid == null ? BigDecimal.ZERO : amountPaid();
-        return this.getDueLocalDate().isAfter(nextDueDate) && amountPaid.compareTo(BigDecimal.ZERO) == 1;
+        return this.getDueLocalDate().isAfter(nextDueDate) && amountPaid.compareTo(BigDecimal.ZERO) > 0;
     }
 
     private BigDecimal amountPaid() {

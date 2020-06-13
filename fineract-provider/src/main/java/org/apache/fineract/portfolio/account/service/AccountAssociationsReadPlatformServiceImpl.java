@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AccountAssociationsReadPlatformServiceImpl implements AccountAssociationsReadPlatformService {
 
-    private final static Logger logger = LoggerFactory.getLogger(AccountAssociationsReadPlatformServiceImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(AccountAssociationsReadPlatformServiceImpl.class);
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
@@ -61,7 +61,7 @@ public class AccountAssociationsReadPlatformServiceImpl implements AccountAssoci
                 linkedAccount = accountAssociationsData.linkedAccount();
             }
         } catch (final EmptyResultDataAccessException e) {
-            logger.debug("Linking account is not configured");
+            LOG.debug("Linking account is not configured");
         }
         return linkedAccount;
     }
@@ -90,7 +90,7 @@ public class AccountAssociationsReadPlatformServiceImpl implements AccountAssoci
                 linkedAccount = accountAssociationsData.linkedAccount();
             }
         } catch (final EmptyResultDataAccessException e) {
-            logger.debug("Linking account is not configured");
+            LOG.debug("Linking account is not configured");
         }
         return linkedAccount;
     }
@@ -190,5 +190,10 @@ public class AccountAssociationsReadPlatformServiceImpl implements AccountAssoci
             return new AccountAssociationsData(id, account, linkedAccount);
         }
 
+    }
+    @Override
+    public PortfolioAccountData retriveSavingsAccount(final Long savingsId){
+        String accountNo = jdbcTemplate.queryForObject("select account_no from m_savings_account where id = ?", String.class, savingsId);
+        return PortfolioAccountData.lookup(savingsId, accountNo);
     }
 }

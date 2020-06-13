@@ -94,7 +94,7 @@ public class XBRLBuilder {
 
         final String prefix = taxonomy.getNamespace();
         String qname = taxonomy.getName();
-        if (prefix != null && (!prefix.isEmpty())) {
+        if (prefix != null && !prefix.isEmpty()) {
             final NamespaceData ns = this.readNamespaceService.retrieveNamespaceByPrefix(prefix);
             if (ns != null) {
 
@@ -114,11 +114,6 @@ public class XBRLBuilder {
 
             if (dims.length == 2) {
                 context = new ContextData(dims[0], dims[1], taxonomy.getType());
-                if (this.contextMap.containsKey(context)) {
-
-                } else {
-
-                }
             }
         }
 
@@ -131,8 +126,8 @@ public class XBRLBuilder {
             final String startDateStr = timeFormat.format(this.startDate);
             final String endDateStr = timeFormat.format(this.endDate);
 
-            final String contextRefID = (context.getPeriodType() == 0) ? ("As_Of_" + endDateStr + (this.instantScenarioCounter++))
-                    : ("Duration_" + startDateStr + "_To_" + endDateStr + (this.durationScenarioCounter++));
+            final String contextRefID = context.getPeriodType() == 0 ? "As_Of_" + endDateStr + this.instantScenarioCounter++
+                    : "Duration_" + startDateStr + "_To_" + endDateStr + this.durationScenarioCounter++;
 
             this.contextMap.put(context, contextRefID);
         }

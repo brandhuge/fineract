@@ -151,7 +151,7 @@ import org.springframework.util.CollectionUtils;
 @Service
 public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements LoanApplicationWritePlatformService {
 
-    private final static Logger logger = LoggerFactory.getLogger(LoanApplicationWritePlatformServiceJpaRepositoryImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(LoanApplicationWritePlatformServiceJpaRepositoryImpl.class);
 
     private final PlatformSecurityContext context;
     private final FromJsonHelper fromJsonHelper;
@@ -513,7 +513,9 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
                         && repaymentFrequencyNthDayType != null) {
                     final String title = "loan_schedule_" + newLoanApplication.getId();
                     LocalDate calendarStartDate = loanApplicationTerms.getRepaymentsStartingFromLocalDate();
-                    if (calendarStartDate == null) calendarStartDate = loanApplicationTerms.getExpectedDisbursementDate();
+                    if (calendarStartDate == null) {
+                        calendarStartDate = loanApplicationTerms.getExpectedDisbursementDate();
+                    }
                     final CalendarFrequencyType calendarFrequencyType = CalendarFrequencyType.MONTHLY;
                     final Integer frequency = loanApplicationTerms.getRepaymentEvery();
                     final Integer repeatsOnDay = loanApplicationTerms.getWeekDayType().getValue();
@@ -550,7 +552,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
 
                 if(gsimClientMembers.contains(BigDecimal.valueOf(newLoanApplication.getClientId())))
                 {
-                    savingsAccount = this.savingsAccountAssembler.assembleFrom((clientAccountMappings.get(BigDecimal.valueOf(newLoanApplication.getClientId()))).longValue());
+                    savingsAccount = this.savingsAccountAssembler.assembleFrom(clientAccountMappings.get(BigDecimal.valueOf(newLoanApplication.getClientId())).longValue());
 
                         this.fromApiJsonDeserializer.validatelinkedSavingsAccount(savingsAccount, newLoanApplication);
                     boolean isActive = true;
@@ -901,7 +903,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
                     final Long loanIdToClose = command.longValueOfParameterNamed(LoanApiConstants.loanIdToClose);
                     LoanTopupDetails existingLoanTopupDetails = existingLoanApplication.getTopupLoanDetails();
                     if(existingLoanTopupDetails == null
-                            || (existingLoanTopupDetails != null && existingLoanTopupDetails.getLoanIdToClose() != loanIdToClose)
+                            || (existingLoanTopupDetails != null && !existingLoanTopupDetails.getLoanIdToClose().equals(loanIdToClose))
                             || changes.containsKey("submittedOnDate")
                             || changes.containsKey("expectedDisbursementDate")
                             || changes.containsKey("principal")
@@ -945,7 +947,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
                                     "Topup loan amount should be greater than outstanding amount of loan to be closed.");
                         }
 
-                        if(existingLoanIdToClose != loanIdToClose){
+                        if(!existingLoanIdToClose.equals(loanIdToClose)) {
                             final LoanTopupDetails topupDetails = new LoanTopupDetails(existingLoanApplication, loanIdToClose);
                             existingLoanApplication.setTopupLoanDetails(topupDetails);
                             changes.put(LoanApiConstants.loanIdToClose, loanIdToClose);
@@ -1016,7 +1018,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
             }
 
             //Changes to modify loan rates.
-            if (command.hasParameter(LoanProductConstants.ratesParamName)) {
+            if (command.hasParameter(LoanProductConstants.RATES_PARAM_NAME)) {
                 existingLoanApplication.updateLoanRates(rateAssembler.fromParsedJson(command.parsedJson()));
             }
 
@@ -1054,7 +1056,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
                     if (isCalendarAssociatedWithEntity && calendarId == null) {
                         this.calendarRepository.delete(calendarInstance.getCalendar());
                     }
-                    if (calendarInstance.getCalendar().getId() != calendar.getId()) {
+                    if (!calendarInstance.getCalendar().getId().equals(calendar.getId())) {
                         calendarInstance.updateCalendar(calendar);
                         this.calendarInstanceRepository.saveAndFlush(calendarInstance);
                     }
@@ -1095,7 +1097,9 @@ public void checkForProductMixRestrictions(final Loan loan) {
                                 final CalendarFrequencyType repaymentFrequencyType = CalendarFrequencyType.MONTHLY;
                                 final Integer interval = command.integerValueOfParameterNamed("repaymentEvery");
                                 LocalDate startDate = command.localDateValueOfParameterNamed("repaymentsStartingFromDate");
-                                if (startDate == null) startDate = command.localDateValueOfParameterNamed("expectedDisbursementDate");
+                                if (startDate == null) {
+                                    startDate = command.localDateValueOfParameterNamed("expectedDisbursementDate");
+                                }
                                 final Calendar newCalendar = Calendar.createRepeatingCalendar(title, startDate, typeId,
                                         repaymentFrequencyType, interval, (Integer) changes.get("repaymentFrequencyDayOfWeekType"),
                                         (Integer) changes.get("repaymentFrequencyNthDayType"));
@@ -1196,7 +1200,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
 
             if (productRelatedDetail.isInterestRecalculationEnabled()) {
                 this.fromApiJsonDeserializer.validateLoanForInterestRecalculation(existingLoanApplication);
-                if (changes.containsKey(LoanProductConstants.isInterestRecalculationEnabledParameterName)) {
+                if (changes.containsKey(LoanProductConstants.IS_INTEREST_RECALCULATION_ENABLED_PARAMETER_NAME)) {
                     createAndPersistCalendarInstanceForInterestRecalculation(existingLoanApplication);
 
                 }
@@ -1242,7 +1246,7 @@ public void checkForProductMixRestrictions(final Loan loan) {
     }
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
-        logger.error("Error occured.", dve);
+        LOG.error("Error occured.", dve);
     }
 
     @Transactional
@@ -1309,7 +1313,8 @@ public void checkForProductMixRestrictions(final Loan loan) {
 
 
         CommandProcessingResult result=null;
-        int count=0,j=0;
+        int count = 0;
+        int j = 0;
         for(JsonElement approvals:approvalFormData)
         {
 

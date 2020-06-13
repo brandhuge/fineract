@@ -72,7 +72,9 @@ public class PersonnelSheetPopulator extends AbstractWorkbookPopulator {
 
 
   private void populateStaffByOfficeName(Sheet staffSheet) {
-    int rowIndex = 1, startIndex = 1, officeIndex = 0;
+    int rowIndex = 1;
+    int startIndex = 1;
+    int officeIndex = 0;
     officeNameToBeginEndIndexesOfStaff = new HashMap<>();
     Row row = staffSheet.createRow(rowIndex);
     for (OfficeData office : offices) {
@@ -91,8 +93,9 @@ public class PersonnelSheetPopulator extends AbstractWorkbookPopulator {
         }
         officeNameToBeginEndIndexesOfStaff.put(officeIndex++, new Integer[]{startIndex, rowIndex});
       }
-    }else
-        officeIndex++;
+    } else {
+      officeIndex++;
+    }
     }
   }
 
@@ -114,8 +117,9 @@ public class PersonnelSheetPopulator extends AbstractWorkbookPopulator {
   }
 
   private void setLayout(Sheet worksheet) {
-    for (Integer i = 0; i < 3; i++)
+    for (Integer i = 0; i < 3; i++) {
       worksheet.setColumnWidth(i, TemplatePopulateImportConstants.MEDIUM_COL_SIZE);
+    }
     Row rowHeader = worksheet.createRow(TemplatePopulateImportConstants.ROWHEADER_INDEX);
     rowHeader.setHeight(TemplatePopulateImportConstants.ROW_HEADER_HEIGHT);
     writeString(OFFICE_NAME_COL, rowHeader, "Office Name");

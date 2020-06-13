@@ -60,8 +60,9 @@ public class GroupSheetPopulator extends AbstractWorkbookPopulator {
     private void setLayout(Sheet worksheet) {
         Row rowHeader = worksheet.createRow(TemplatePopulateImportConstants.ROWHEADER_INDEX);
         rowHeader.setHeight(TemplatePopulateImportConstants.ROW_HEADER_HEIGHT);
-        for (int colIndex = 0; colIndex <= 10; colIndex++)
+        for (int colIndex = 0; colIndex <= 10; colIndex++) {
             worksheet.setColumnWidth(colIndex, TemplatePopulateImportConstants.MEDIUM_COL_SIZE);
+        }
         writeString(OFFICE_NAME_COL, rowHeader, "Office Names");
         writeString(GROUP_NAME_COL, rowHeader, "Group Names");
         writeString(GROUP_ID_COL, rowHeader, "Group ID");
@@ -83,7 +84,9 @@ public class GroupSheetPopulator extends AbstractWorkbookPopulator {
         officeToGroups.put(key, values);
     }
     private void populateGroupsByOfficeName(Sheet groupSheet) {
-        int rowIndex = 1, officeIndex = 0, startIndex = 1;
+        int rowIndex = 1;
+        int officeIndex = 0;
+        int startIndex = 1;
         officeNameToBeginEndIndexesOfGroups = new HashMap<>();
         Row row = groupSheet.createRow(rowIndex);
         for(OfficeData office : offices) {
@@ -91,8 +94,9 @@ public class GroupSheetPopulator extends AbstractWorkbookPopulator {
                writeString(OFFICE_NAME_COL, row, office.name());
                ArrayList<String> groupsList = new ArrayList<>();
 
-               if(officeToGroups.containsKey(office.name().trim().replaceAll("[ )(]", "_")))
+               if(officeToGroups.containsKey(office.name().trim().replaceAll("[ )(]", "_"))) {
                    groupsList = officeToGroups.get(office.name().trim().replaceAll("[ )(]", "_"));
+               }
 
             if(!groupsList.isEmpty()) {
                 for(String groupName : groupsList) {

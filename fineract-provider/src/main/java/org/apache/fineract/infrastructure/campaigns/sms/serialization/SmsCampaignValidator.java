@@ -297,7 +297,7 @@ public class SmsCampaignValidator {
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
 
-    public void ValidateClosure(String json) {
+    public void validateClosure(String json) {
         if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
 
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
@@ -324,11 +324,11 @@ public class SmsCampaignValidator {
             if (client != null) {
                 DeviceRegistration deviceRegistration = this.deviceRegistrationRepository
                         .findDeviceRegistrationByClientId(client.getId());
-                return (deviceRegistration != null);
+                return deviceRegistration != null;
             }
             return false;
         }
-        return (mobileNo != null);
+        return mobileNo != null;
     }
 
 }

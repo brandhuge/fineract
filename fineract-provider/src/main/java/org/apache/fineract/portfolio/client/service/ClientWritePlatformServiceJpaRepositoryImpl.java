@@ -96,7 +96,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWritePlatformService {
 
-    private final static Logger logger = LoggerFactory.getLogger(ClientWritePlatformServiceJpaRepositoryImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(ClientWritePlatformServiceJpaRepositoryImpl.class);
 
     private final PlatformSecurityContext context;
     private final ClientRepositoryWrapper clientRepository;
@@ -171,7 +171,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             this.noteRepository.deleteInBatch(relatedNotes);
 
             final ClientNonPerson clientNonPerson = this.clientNonPersonRepository.findOneByClientId(clientId);
-            if (clientNonPerson != null) this.clientNonPersonRepository.delete(clientNonPerson);
+            if (clientNonPerson != null) {
+                this.clientNonPersonRepository.delete(clientNonPerson);
+            }
 
             this.clientRepository.delete(client);
             this.clientRepository.flush();
@@ -182,7 +184,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     .build();
         } catch (DataIntegrityViolationException dve) {
             Throwable throwable = ExceptionUtils.getRootCause(dve.getCause()) ;
-            logger.error("Error occured.", throwable);
+            LOG.error("Error occured.", throwable);
             throw new PlatformDataIntegrityException("error.msg.client.unknown.data.integrity.issue",
                     "Unknown data integrity issue with resource.");
         }
@@ -488,8 +490,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 if(legalFormValue != null)
                 {
                     LegalForm legalForm = LegalForm.fromInt(legalFormValue);
-                    if(legalForm != null)
+                    if(legalForm != null) {
                         isChangedToEntity = legalForm.isEntity();
+                    }
                 }
 
                 if(isChangedToEntity)
@@ -499,8 +502,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 else
                 {
                     final ClientNonPerson clientNonPerson = this.clientNonPersonRepository.findOneByClientId(clientForUpdate.getId());
-                    if(clientNonPerson != null)
+                    if(clientNonPerson != null) {
                         this.clientNonPersonRepository.delete(clientNonPerson);
+                    }
                 }
             }
 
@@ -615,7 +619,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     }
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
-        logger.error("Error occured.", dve);
+        LOG.error("Error occured.", dve);
     }
 
     @Transactional

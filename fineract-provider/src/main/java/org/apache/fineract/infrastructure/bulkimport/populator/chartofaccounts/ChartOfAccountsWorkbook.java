@@ -152,8 +152,9 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
         try {
             for (Integer rowNo = 1; rowNo < 3000; rowNo++) {
                 Row row = worksheet.getRow(rowNo);
-                if (row == null)
+                if (row == null) {
                     row = worksheet.createRow(rowNo);
+                }
                 writeFormula(ChartOfAcountsConstants.PARENT_ID_COL, row,
                         "IF(ISERROR(VLOOKUP($E"+(rowNo+1)+",$Q$2:$R$"+(glAccounts.size()+1)+",2,FALSE))," +
                                 "\"\",(VLOOKUP($E"+(rowNo+1)+",$Q$2:$R$"+(glAccounts.size()+1)+",2,FALSE)))");
@@ -173,7 +174,9 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
                 accountTypesNoDuplicatesList.add(glAccounts.get(i).getType().getValue());
             }
         }
-        int rowIndex=1,startIndex=1,accountTypeIndex=0;
+        int rowIndex = 1;
+        int startIndex = 1;
+        int accountTypeIndex = 0;
         accountTypeToBeginEndIndexesofAccountNames= new HashMap<Integer,Integer[]>();
         for (String accountType: accountTypesNoDuplicatesList) {
              startIndex=rowIndex+1;
@@ -183,7 +186,7 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
              if (!accountNamesandTags.isEmpty()){
                  for (String accountNameandTag:accountNamesandTags) {
                      if (chartOfAccountsSheet.getRow(rowIndex)!=null){
-                         String accountNameAndTagAr[]=accountNameandTag.split("-");
+                         String[] accountNameAndTagAr=accountNameandTag.split("-");
                          writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_NAME_COL,row,accountNameAndTagAr[0]);
                          writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_ID_COL,row,accountNameAndTagAr[1]);
                          writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL,row,accountNameAndTagAr[2]);
@@ -191,7 +194,7 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
                          rowIndex++;
                      }else{
                          row =chartOfAccountsSheet.createRow(rowIndex);
-                         String accountNameAndTagAr[]=accountNameandTag.split("-");
+                         String[] accountNameAndTagAr=accountNameandTag.split("-");
                          writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_NAME_COL,row,accountNameAndTagAr[0]);
                          writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_ID_COL,row,accountNameAndTagAr[1]);
                          writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL,row,accountNameAndTagAr[2]);

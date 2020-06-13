@@ -88,7 +88,7 @@ import org.springframework.util.CollectionUtils;
 @Service
 public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements JournalEntryWritePlatformService {
 
-    private final static Logger logger = LoggerFactory.getLogger(JournalEntryWritePlatformServiceJpaRepositoryImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(JournalEntryWritePlatformServiceJpaRepositoryImpl.class);
 
     private final GLClosureRepository glClosureRepository;
     private final GLAccountRepository glAccountRepository;
@@ -158,7 +158,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
 
             /** Set a transaction Id and save these Journal entries **/
-            final Date transactionDate = command.DateValueOfParameterNamed(JournalEntryJsonInputParams.TRANSACTION_DATE.getValue());
+            final Date transactionDate = command.dateValueOfParameterNamed(JournalEntryJsonInputParams.TRANSACTION_DATE.getValue());
             final String transactionId = generateTransactionId(officeId);
             final String referenceNumber = command.stringValueOfParameterNamed(JournalEntryJsonInputParams.REFERENCE_NUMBER.getValue());
 
@@ -640,7 +640,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
     private PlatformDataIntegrityException handleJournalEntryDataIntegrityIssues(final DataIntegrityViolationException dve) {
         final Throwable realCause = dve.getMostSpecificCause();
-        logger.error("Error occured.", dve);
+        LOG.error("Error occured.", dve);
         return new PlatformDataIntegrityException("error.msg.glJournalEntry.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource Journal Entry: " + realCause.getMessage());
     }
@@ -680,7 +680,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             }
 
             /** Set a transaction Id and save these Journal entries **/
-            final Date transactionDate = command.DateValueOfParameterNamed(JournalEntryJsonInputParams.TRANSACTION_DATE.getValue());
+            final Date transactionDate = command.dateValueOfParameterNamed(JournalEntryJsonInputParams.TRANSACTION_DATE.getValue());
             final String transactionId = generateTransactionId(officeId);
 
             saveAllDebitOrCreditOpeningBalanceEntries(journalEntryCommand, office, currencyCode, transactionDate,
@@ -773,7 +773,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
         @Override
         public boolean equals(Object obj) {
-            if (!obj.getClass().equals(this.getClass())) {
+            if (!(obj instanceof OfficeCurrencyKey)) {
                 return false;
             }
             OfficeCurrencyKey copy = (OfficeCurrencyKey) obj;

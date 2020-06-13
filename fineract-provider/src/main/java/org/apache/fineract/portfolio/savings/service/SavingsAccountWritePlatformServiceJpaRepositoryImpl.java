@@ -205,7 +205,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         this.gsimRepository=gsimRepository;
     }
 
-    private final static Logger logger = LoggerFactory.getLogger(SavingsAccountWritePlatformServiceJpaRepositoryImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(SavingsAccountWritePlatformServiceJpaRepositoryImpl.class);
     @Transactional
     @Override
     public CommandProcessingResult gsimActivate(final Long gsimId, final JsonCommand command) {
@@ -289,7 +289,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         }
         account.processAccountUponActivation(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, user);
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
-        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) == 1) {
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
@@ -330,7 +330,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         if (this.savingAccountRepositoryWrapper.findOneWithNotFoundDetection(savingsId).getGsim() != null) {
              isGsim = true;
-             logger.info("is gsim");
+             LOG.info("is gsim");
         }
 
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId);
@@ -350,16 +350,16 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         if (isGsim && (deposit.getId() != null)) {
 
-            logger.debug("Deposit account has been created: {} ", deposit);
+            LOG.debug("Deposit account has been created: {} ", deposit);
 
             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).get();
-            logger.info("parent deposit : {} ", gsim.getParentDeposit());
-            logger.info("child account : {} ", savingsId);
+            LOG.info("parent deposit : {} ", gsim.getParentDeposit());
+            LOG.info("child account : {} ", savingsId);
             BigDecimal currentBalance = gsim.getParentDeposit();
             BigDecimal newBalance = currentBalance.add(transactionAmount);
             gsim.setParentDeposit(newBalance);
             gsimRepository.save(gsim);
-            logger.info("balance after making deposit : {} ", gsimRepository.findById(account.getGsim().getId()).get().getParentDeposit());
+            LOG.info("balance after making deposit : {} ", gsimRepository.findById(account.getGsim().getId()).get().getParentDeposit());
 
        }
 
@@ -625,7 +625,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     financialYearBeginningMonth, postInterestOnDate);
         }
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
-        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) == 1) {
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
@@ -717,7 +717,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     financialYearBeginningMonth, postInterestOnDate);
         }
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
-        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) == 1) {
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
@@ -1122,7 +1122,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     financialYearBeginningMonth, postInterestOnDate);
         }
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
-        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) == 1) {
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
@@ -1255,7 +1255,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     financialYearBeginningMonth, postInterestOnDate);
         }
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
-        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) == 1) {
+        if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
                     .findBySavingsAccountAndReversedFalseOrderByCreatedDateAsc(account);
         }
@@ -1657,7 +1657,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         for (SavingsAccountTransaction transaction : savingsAccount.getTransactions()) {
             if ((transaction.getTransactionLocalDate().isEqual(transferDate)
-                    && transaction.getTransactionLocalDate().isAfter(new LocalDate(transferDate)))
+                    && transaction.getTransactionLocalDate().isAfter(transferDate))
                     || transaction.getTransactionLocalDate().isAfter(transferDate)) {
                 throw new GeneralPlatformDomainRuleException(TransferApiConstants.transferClientSavingsException,
                         TransferApiConstants.transferClientSavingsException, new LocalDate(transaction.createdDate()),

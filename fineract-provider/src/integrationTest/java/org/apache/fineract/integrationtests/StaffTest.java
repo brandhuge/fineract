@@ -55,7 +55,7 @@ public class StaffTest {
         Map<String, Object> response = StaffHelper.createStaffMap(requestSpec, responseSpec);
 
         Assert.assertNotNull(response);
-        Assert.assertEquals(response.get("officeId"), 1);
+        Assert.assertEquals(1, response.get("officeId"));
         Assert.assertNotNull(response.get("resourceId"));
     }
 
@@ -70,7 +70,7 @@ public class StaffTest {
         StaffHelper.createStaffWithJson(requestSpec, responseSpecForValidationError, noFirstnameJson);
         StaffHelper.createStaffWithJson(requestSpec, responseSpecForValidationError, noLastnameJson);
 
-        final HashMap<String, Object> map = new HashMap<>();
+        final Map<String, Object> map = StaffHelper.getMapWithJoiningDate();
 
         map.put("officeId", 1);
         map.put("firstname", Utils.randomNameGenerator("michael_", 5));
@@ -91,9 +91,10 @@ public class StaffTest {
         StaffHelper.createStaffWithJson(requestSpec, responseSpecForValidationError, new Gson().toJson(map));
     }
 
+    @Test
     public void testStaffCreateMaxNameLength() {
 
-        final HashMap<String, Object> map = new HashMap<>();
+        final Map<String, Object> map = StaffHelper.getMapWithJoiningDate();
 
         map.put("officeId", 1);
         map.put("firstname", Utils.randomNameGenerator("michael_", 42));
@@ -102,8 +103,9 @@ public class StaffTest {
         StaffHelper.createStaffWithJson(requestSpec, responseSpec, new Gson().toJson(map));
     }
 
+    @Test
     public void testStaffCreateExternalIdValidationError() {
-        final HashMap<String, Object> map = new HashMap<>();
+        final Map<String, Object> map = StaffHelper.getMapWithJoiningDate();
 
         map.put("officeId", 1);
         map.put("firstname", Utils.randomNameGenerator("michael_", 5));
@@ -118,7 +120,7 @@ public class StaffTest {
         Map<String, Object> response = StaffHelper.getStaff(requestSpec, responseSpec, 1);
         Assert.assertNotNull(response);
         Assert.assertNotNull(response.get("id"));
-        Assert.assertEquals(response.get("id"), 1);
+        Assert.assertEquals(1, response.get("id"));
     }
 
     @Test
@@ -136,7 +138,7 @@ public class StaffTest {
         List<Map<String, Object>> responseActive = StaffHelper.getStaffListWithState(requestSpec, responseSpec, "active");
         for(final Map<String, Object> staff : responseActive) {
             Assert.assertNotNull(staff.get("id"));
-            Assert.assertEquals(staff.get("isActive"), true);
+            Assert.assertEquals(true, staff.get("isActive"));
         }
     }
 
@@ -145,7 +147,7 @@ public class StaffTest {
         List<Map<String, Object>> responseInactive = StaffHelper.getStaffListWithState(requestSpec, responseSpec, "inactive");
         for(final Map<String, Object> staff : responseInactive) {
             Assert.assertNotNull(staff.get("id"));
-            Assert.assertEquals(staff.get("isActive"), false);
+            Assert.assertEquals(false, staff.get("isActive"));
         }
     }
 
@@ -183,6 +185,7 @@ public class StaffTest {
         Assert.assertEquals(mobileNo, changes.get("mobileNo"));
     }
 
+    @Test
     public void testStaffUpdateLongExternalIdError() {
         final HashMap<String, Object> map = new HashMap<>();
         map.put("externalId", Utils.randomStringGenerator("EXT", 98));
@@ -190,6 +193,7 @@ public class StaffTest {
         StaffHelper.updateStaff(requestSpec, responseSpecForValidationError, 1, map);
     }
 
+    @Test
     public void testStaffUpdateWrongActiveState() {
         final HashMap<String, Object> map = new HashMap<>();
         map.put("isActive", "xyz");

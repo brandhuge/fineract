@@ -62,7 +62,7 @@ public class FloatingRatePeriodData implements
     }
 
     public LocalDate getFromDateAsLocalDate() {
-        return new LocalDate(this.fromDate);
+        return this.fromDate;
     }
 
     public BigDecimal getInterestRate() {
@@ -113,7 +113,7 @@ public class FloatingRatePeriodData implements
         if (obj == this) {
             return true;
         }
-        if (obj.getClass() != getClass()) {
+        if (!(obj instanceof FloatingRatePeriodData)) {
             return false;
         }
         final FloatingRatePeriodData rhs = (FloatingRatePeriodData) obj;

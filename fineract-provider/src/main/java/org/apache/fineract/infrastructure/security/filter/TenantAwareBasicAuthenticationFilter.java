@@ -67,7 +67,7 @@ import org.springframework.stereotype.Service;
 public class TenantAwareBasicAuthenticationFilter extends BasicAuthenticationFilter {
 
     private static boolean firstRequestProcessed = false;
-    private final static Logger logger = LoggerFactory.getLogger(TenantAwareBasicAuthenticationFilter.class);
+    private final static Logger LOG = LoggerFactory.getLogger(TenantAwareBasicAuthenticationFilter.class);
 
     private final BasicAuthTenantDetailsService basicAuthTenantDetailsService;
     private final ToApiJsonSerializer<PlatformRequestLog> toApiJsonSerializer;
@@ -152,7 +152,7 @@ public class TenantAwareBasicAuthenticationFilter extends BasicAuthenticationFil
         } finally {
             task.stop();
             final PlatformRequestLog log = PlatformRequestLog.from(task, request);
-            logger.debug("{}", this.toApiJsonSerializer.serialize(log));
+            LOG.debug("{}", this.toApiJsonSerializer.serialize(log));
         }
     }
 
@@ -170,10 +170,10 @@ public class TenantAwareBasicAuthenticationFilter extends BasicAuthenticationFil
         }
 
         String pathURL = request.getRequestURI();
-        boolean isSelfServiceRequest = (pathURL != null && pathURL.contains("/self/"));
+        boolean isSelfServiceRequest = pathURL != null && pathURL.contains("/self/");
 
-        boolean notAllowed = ((isSelfServiceRequest && !user.isSelfServiceUser())
-                ||(!isSelfServiceRequest && user.isSelfServiceUser()));
+        boolean notAllowed = (isSelfServiceRequest && !user.isSelfServiceUser())
+                || (!isSelfServiceRequest && user.isSelfServiceUser());
 
         if(notAllowed){
             throw new BadCredentialsException("User not authorised to use the requested resource.");

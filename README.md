@@ -45,14 +45,14 @@ Run the following commands:
 
 Instructions to build the JAR file
 ============
-1. Extract the archive file to your local directory.
+1. Clone the repository or download and extract the archive file to your local directory.
 2. Run `./gradlew clean bootJar` to build a modern cloud native fully self contained JAR file which will be created at `build/libs` directory.
 3. Start it using `java -jar build/libs/fineract-provider.jar` (does not require external Tomcat)
 
 
 Instructions to build a WAR file
 ============
-1. Extract the archive file to your local directory.
+1. Clone the repository or download and extract the archive file to your local directory.
 2. Run `./gradlew clean bootWar` to build a traditional WAR file which will be created at `build/libs` directory.  
 3. Deploy this WAR to your Tomcat v9 Servlet Container.
 
@@ -67,6 +67,24 @@ Run the following commands, very similarly to how [.travis.yml](.travis.yml) doe
 1. `./gradlew createDB -PdbName=fineract_tenants`
 1. `./gradlew createDB -PdbName=fineract_default`
 1. `./gradlew clean integrationTest`
+
+
+Instructions to run and debug in Eclipse IDE
+============
+
+It is possible to run Fineract in Eclipse IDE and also to debug Fineract using Eclipse's debugging facilities. 
+To do this, you need to create the Eclipse project files and import the project into an Eclipse workspace:
+
+1. Create Eclipse project files into the Fineract project by running `./gradlew cleanEclipse eclipse`
+2. Import the fineract-provider project into your Eclipse workspace (File->Import->General->Existing Projects into Workspace, choose root directory fineract/fineract-provider)
+3. Do a clean build of the project in Eclipse (Project->Clean...)
+3. Run / debug Fineract by right clicking on org.apache.fineract.ServerApplication class and choosing Run As / Debug As -> Java Application. All normal Eclipse debugging features (breakpoints, watchpoints etc) should work as expected. 
+
+If you change the project settings (dependencies etc) in Gradle, you should redo step 1 and refresh the project in Eclipse.
+
+You can also use Eclipse Junit support to run tests in Eclipse (Run As->Junit Test)
+
+Finally, modifying source code in Eclipse automatically triggers hot code replace to a running instance, allowing you to immediately test your changes 
 
 
 Instructions to run using Docker and docker-compose
@@ -222,7 +240,7 @@ complies with the [Apache Software Foundation third-party license policy](https:
 Apache Fineract Platform API
 ============
 
-The API for the Fineract-platform (project named 'Apache Fineract') is documented in the API-docs under <b><i>Full API Matrix</i></b> and can be viewed [here](https://demo.mifos.io/api-docs/apiLive.htm "API Documentation").
+The API for the Fineract-platform (project named 'Apache Fineract') is documented in the API-docs under <b><i>Full API Matrix</i></b> and can be viewed [here](https://demo.fineract.dev/fineract-provider/api-docs/apiLive.htm "API Documentation").
 
 
 API clients (Web UIs, Mobile, etc.)

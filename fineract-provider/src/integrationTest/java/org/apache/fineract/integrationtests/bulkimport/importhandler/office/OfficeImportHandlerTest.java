@@ -40,10 +40,14 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OfficeImportHandlerTest {
+
+    private final static Logger LOG = LoggerFactory.getLogger(OfficeImportHandlerTest.class);
+
     private ResponseSpecification responseSpec;
     private RequestSpecification requestSpec;
 
@@ -60,7 +64,6 @@ public class OfficeImportHandlerTest {
     }
 
     @Test
-    @Ignore
     public void testOfficeImport() throws IOException, InterruptedException, NoSuchFieldException, ParseException {
         OfficeHelper officeHelper=new OfficeHelper(requestSpec,responseSpec);
         Workbook workbook=officeHelper.getOfficeWorkBook("dd MMMM yyyy");
@@ -78,8 +81,9 @@ public class OfficeImportHandlerTest {
         String currentdirectory = new File("").getAbsolutePath();
         File directory=new File(currentdirectory+File.separator+"src"+File.separator+"integrationTest"+File.separator+
                 "resources"+File.separator+"bulkimport"+File.separator+"importhandler"+File.separator+"office");
-        if (!directory.exists())
+        if (!directory.exists()) {
             directory.mkdirs();
+        }
         File file= new File(directory+File.separator+"Office.xls");
         OutputStream outputStream=new FileOutputStream(file);
         workbook.write(outputStream);
@@ -90,7 +94,7 @@ public class OfficeImportHandlerTest {
         Assert.assertNotNull(importDocumentId);
 
         // Wait for the creation of output excel
-        Thread.sleep(3000);
+        Thread.sleep(10000);
 
         //check  status column of output excel
         String location=officeHelper.getOutputTemplateLocation(importDocumentId);
@@ -98,7 +102,11 @@ public class OfficeImportHandlerTest {
         Workbook outputWorkbook=new HSSFWorkbook(fileInputStream);
         Sheet officeSheet = outputWorkbook.getSheet(TemplatePopulateImportConstants.OFFICE_SHEET_NAME);
         Row row= officeSheet.getRow(1);
-        Assert.assertEquals("Imported",row.getCell(OfficeConstants.STATUS_COL).getStringCellValue());
 
+        LOG.info("Output location: {}", location);
+        LOG.info("Failure reason column: {}", row.getCell(OfficeConstants.STATUS_COL).getStringCellValue());
+
+        Assert.assertEquals("Imported",row.getCell(OfficeConstants.STATUS_COL).getStringCellValue());
+        outputWorkbook.close();
     }
 }

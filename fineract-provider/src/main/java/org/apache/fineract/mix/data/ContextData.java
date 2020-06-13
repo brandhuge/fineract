@@ -27,7 +27,7 @@ public class ContextData {
     public ContextData(final String dimensionType, final String dimension, final Integer taxonomyType) {
         this.dimensionType = dimensionType;
         this.dimension = dimension;
-        this.periodType = taxonomyType == MixTaxonomyData.BALANCESHEET || taxonomyType == MixTaxonomyData.PORTFOLIO ? 0 : 1;
+        this.periodType = taxonomyType.equals(MixTaxonomyData.BALANCESHEET) || taxonomyType.equals(MixTaxonomyData.PORTFOLIO) ? 0 : 1;
     }
 
     public String getDimensionType() {
@@ -56,7 +56,7 @@ public class ContextData {
     public boolean equals(final Object obj) {
         if (this == obj) { return true; }
         if (obj == null) { return false; }
-        if (getClass() != obj.getClass()) { return false; }
+        if (!(obj instanceof ContextData)) { return false; }
         final ContextData other = (ContextData) obj;
         if (this.dimension == null) {
             if (other.dimension != null) { return false; }

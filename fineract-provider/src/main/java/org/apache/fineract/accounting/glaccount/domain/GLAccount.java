@@ -18,8 +18,8 @@
  */
 package org.apache.fineract.accounting.glaccount.domain;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import javax.persistence.Column;
@@ -50,7 +50,7 @@ public class GLAccount extends AbstractPersistableCustom {
 
     @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private List<GLAccount> children = new LinkedList<>();
+    private List<GLAccount> children = new ArrayList<>();
 
     @Column(name = "name", nullable = false, length = 45)
     private String name;
@@ -237,8 +237,8 @@ public class GLAccount extends AbstractPersistableCustom {
         return GLAccountUsage.DETAIL.getValue().equals(this.usage);
     }
 
-    public void updateTagId(final CodeValue tagID) {
-        this.tagId = tagID;
+    public void updateTagId(final CodeValue tagId) {
+        this.tagId = tagId;
     }
 
     public void updateParentAccount(final GLAccount parentAccount) {

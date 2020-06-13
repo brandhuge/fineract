@@ -74,8 +74,9 @@ public class FixedDepositTransactionWorkbookPopulator extends AbstractWorkbookPo
         for(Integer rowNo = 1; rowNo < 3000; rowNo++)
         {
             Row row = worksheet.getRow(rowNo);
-            if(row == null)
+            if(row == null) {
                 row = worksheet.createRow(rowNo);
+            }
             writeFormula(TransactionConstants.PRODUCT_COL, row, "IF(ISERROR(VLOOKUP($C"+ (rowNo+1) +",$Q$2:$S$" + (savingsAccounts.size() + 1) + ",2,FALSE)),\"\",VLOOKUP($C"+ (rowNo+1) +",$Q$2:$S$" + (savingsAccounts.size() + 1) + ",2,FALSE))");
             writeFormula(TransactionConstants.OPENING_BALANCE_COL, row, "IF(ISERROR(VLOOKUP($C"+ (rowNo+1) +",$Q$2:$S$" + (savingsAccounts.size() + 1) + ",3,FALSE)),\"\",VLOOKUP($C"+ (rowNo+1) +",$Q$2:$S$" + (savingsAccounts.size() + 1) + ",3,FALSE))");
         }
@@ -145,7 +146,8 @@ public class FixedDepositTransactionWorkbookPopulator extends AbstractWorkbookPo
         HashMap<String, Integer[]> clientNameToBeginEndIndexes = new HashMap<>();
         ArrayList<String> clientsWithActiveSavings = new ArrayList<>();
         ArrayList<Long> clientIdsWithActiveSavings = new ArrayList<>();
-        int startIndex = 1, endIndex = 1;
+        int startIndex = 1;
+        int endIndex = 1;
         String clientName = "";
         Long clientId = null;
         for(int i = 0; i < savingsAccounts.size(); i++){
@@ -190,8 +192,10 @@ public class FixedDepositTransactionWorkbookPopulator extends AbstractWorkbookPo
             writeString(TransactionConstants.LOOKUP_CLIENT_NAME_COL, row, savingsAccount.getClientName()  + "(" + savingsAccount.getClientId() + ")");
             writeString(TransactionConstants.LOOKUP_ACCOUNT_NO_COL, row, savingsAccount.getAccountNo());
             writeString(TransactionConstants.LOOKUP_PRODUCT_COL, row, savingsAccount.getSavingsProductName());
-            if(savingsAccount.getMinRequiredOpeningBalance() != null)
-                writeBigDecimal(TransactionConstants.LOOKUP_OPENING_BALANCE_COL, row, savingsAccount.getMinRequiredOpeningBalance());
+            if(savingsAccount.getMinRequiredOpeningBalance() != null) {
+                writeBigDecimal(TransactionConstants.LOOKUP_OPENING_BALANCE_COL, row,
+                        savingsAccount.getMinRequiredOpeningBalance());
+            }
             writeDate(TransactionConstants.LOOKUP_SAVINGS_ACTIVATION_DATE_COL, row,"" +
                     savingsAccount.getTimeline().getActivatedOnDate().getDayOfMonth() + "/"
                     + savingsAccount.getTimeline().getActivatedOnDate().getMonthOfYear() + "/"

@@ -62,7 +62,6 @@ import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,8 +94,8 @@ public class AccountingScenarioIntegrationTest {
     Float SP_WITHDRAWAL_AMOUNT = Float.valueOf(WITHDRAWAL_AMOUNT);
     Float SP_WITHDRAWAL_AMOUNT_ADJUSTED = Float.valueOf(WITHDRAWAL_AMOUNT_ADJUSTED);
 
-    private final String REPAYMENT_DATE[] = { "", "04 May 2011", "04 July 2011", "04 September 2011", "04 November 2011", "04 January 2012" };
-    private final Float REPAYMENT_AMOUNT[] = { .0f, 2200.0f, 3000.0f, 900.0f, 2000.0f, 2500.0f };
+    private final String[] REPAYMENT_DATE = { "", "04 May 2011", "04 July 2011", "04 September 2011", "04 November 2011", "04 January 2012" };
+    private final Float[] REPAYMENT_AMOUNT = { .0f, 2200.0f, 3000.0f, 900.0f, 2000.0f, 2500.0f };
 
     private final Float AMOUNT_TO_BE_WAIVE = 400.0f;
     private LoanTransactionHelper loanTransactionHelper;
@@ -120,7 +119,7 @@ public class AccountingScenarioIntegrationTest {
         this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
         this.accountHelper = new AccountHelper(this.requestSpec, this.responseSpec);
         this.journalEntryHelper = new JournalEntryHelper(this.requestSpec, this.responseSpec);
-        this.schedulerJobHelper = new SchedulerJobHelper(this.requestSpec, this.responseSpec);
+        this.schedulerJobHelper = new SchedulerJobHelper(this.requestSpec);
         this.periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(this.requestSpec, this.responseSpec);
     }
 
@@ -555,7 +554,6 @@ public class AccountingScenarioIntegrationTest {
     }
 
     @Test
-    @Ignore // TODO FINERACT-899
     public void checkPeriodicAccrualAccountingFlow() throws InterruptedException,ParseException {
         final Account assetAccount = this.accountHelper.createAssetAccount();
         final Account incomeAccount = this.accountHelper.createIncomeAccount();
@@ -588,7 +586,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Accrual Transactions";
 
-        this.schedulerJobHelper.executeJob(jobName);
+        this.schedulerJobHelper.executeAndAwaitJob(jobName);
 
         // MAKE 1
         LOG.info("Repayment 1 ......");
@@ -669,7 +667,6 @@ public class AccountingScenarioIntegrationTest {
     }
 
     @Test
-    @Ignore // TODO https://issues.apache.org/jira/browse/FINERACT-899
     public void checkPeriodicAccrualAccountingFlow_OVER_PAYMENT() throws InterruptedException,ParseException {
         final Account assetAccount = this.accountHelper.createAssetAccount();
         final Account incomeAccount = this.accountHelper.createIncomeAccount();
@@ -702,7 +699,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Accrual Transactions";
 
-        this.schedulerJobHelper.executeJob(jobName);
+        this.schedulerJobHelper.executeAndAwaitJob(jobName);
 
         // MAKE 1
         LOG.info("Repayment 1 ......");
@@ -725,7 +722,6 @@ public class AccountingScenarioIntegrationTest {
     }
 
     @Test
-    @Ignore // TODO https://issues.apache.org/jira/browse/FINERACT-899
     public void checkPeriodicAccrualAccountingTillCurrentDateFlow() throws InterruptedException,ParseException {
         final Account assetAccount = this.accountHelper.createAssetAccount();
         final Account incomeAccount = this.accountHelper.createIncomeAccount();
@@ -788,7 +784,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Periodic Accrual Transactions";
 
-        this.schedulerJobHelper.executeJob(jobName);
+        this.schedulerJobHelper.executeAndAwaitJob(jobName);
 
         final ArrayList<HashMap> loanSchedule = this.loanTransactionHelper.getLoanRepaymentSchedule(this.requestSpec, this.responseSpec,
                 loanID);

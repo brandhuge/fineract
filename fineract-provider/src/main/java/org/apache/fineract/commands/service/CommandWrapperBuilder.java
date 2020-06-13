@@ -77,12 +77,12 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder createCreditBureauLoanProductMapping(final long CreditBureauId) {
+    public CommandWrapperBuilder createCreditBureauLoanProductMapping(final long creditBureauId) {
         this.actionName = "CREATE";
         this.entityName = "CREDITBUREAU_LOANPRODUCT_MAPPING";
-        this.entityId = CreditBureauId;
+        this.entityId = creditBureauId;
         this.href = "/creditBureauConfiguration/template";
-        this.creditBureauId=CreditBureauId;
+        this.creditBureauId=creditBureauId;
         return this;
     }
 
@@ -2434,7 +2434,7 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder SavingsInterestPostingAsOnDate(final Long accountId) {
+    public CommandWrapperBuilder savingsInterestPostingAsOnDate(final Long accountId) {
         this.actionName = "POSTINTERESTASONDATE";
         this.entityName = "SAVINGSACCOUNT";
         this.savingsId = accountId;
