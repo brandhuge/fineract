@@ -26,8 +26,13 @@ import org.apache.fineract.integrationtests.common.accounting.Account;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TaxComponentHelper {
-    private final static Logger LOG = LoggerFactory.getLogger(TaxComponentHelper.class);
+public final class TaxComponentHelper {
+
+    private TaxComponentHelper() {
+
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(TaxComponentHelper.class);
     private static final String CREATE_TAX_COMPONENT_URL = "/fineract-provider/api/v1/taxes/component?" + Utils.TENANT_IDENTIFIER;
 
     public static Integer createTaxComponent(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
@@ -43,7 +48,7 @@ public class TaxComponentHelper {
             map.put("creditAccountType", Account.AccountType.LIABILITY.toString());
             map.put("creditAcountId", String.valueOf(creditAccountId));
         }
-        LOG.info("map :  {}" , map);
+        LOG.info("map :  {}", map);
         return new Gson().toJson(map);
     }
 

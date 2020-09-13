@@ -199,7 +199,9 @@ public class InterestRateChartSlabFields {
         if (isPrimaryGroupingByAmount) {
             if (isAmountSame) {
                 if (hasPeriods) {
-                    if (this.toPeriod == null) { return true; }
+                    if (this.toPeriod == null) {
+                        return true;
+                    }
                     return isNotProperPeriodStart(that.fromPeriod);
                 }
             } else {
@@ -208,7 +210,9 @@ public class InterestRateChartSlabFields {
         } else {
             if (isPeriodSame) {
                 if (hasAmounts) {
-                    if (this.amountRangeTo == null) { return true; }
+                    if (this.amountRangeTo == null) {
+                        return true;
+                    }
                     return isNotProperAmountStart(that.amountRangeFrom);
                 }
             } else {
@@ -228,8 +232,8 @@ public class InterestRateChartSlabFields {
 
     public static boolean isNotProperAmountStart(final InterestRateChartSlabFields interestRateChartSlabFields) {
         return interestRateChartSlabFields.amountRangeFrom != null
-                && (interestRateChartSlabFields.amountRangeFrom.compareTo(BigDecimal.ONE) != 0 && interestRateChartSlabFields.amountRangeFrom
-                        .compareTo(BigDecimal.ZERO) != 0);
+                && (interestRateChartSlabFields.amountRangeFrom.compareTo(BigDecimal.ONE) != 0
+                        && interestRateChartSlabFields.amountRangeFrom.compareTo(BigDecimal.ZERO) != 0);
     }
 
     private boolean isNotProperAmountStart(final BigDecimal amount) {
@@ -272,7 +276,9 @@ public class InterestRateChartSlabFields {
             return true;
         } else if (this.toPeriod == null) {
             return true;
-        } else if (that.toPeriod == null) { return that.fromPeriod <= this.toPeriod; }
+        } else if (that.toPeriod == null) {
+            return that.fromPeriod <= this.toPeriod;
+        }
         return this.fromPeriod <= that.toPeriod && that.fromPeriod <= this.toPeriod;
     }
 
@@ -283,7 +289,9 @@ public class InterestRateChartSlabFields {
             return true;
         } else if (this.amountRangeTo == null) {
             return true;
-        } else if (that.amountRangeTo == null) { return that.amountRangeFrom.compareTo(this.amountRangeTo) <= 0; }
+        } else if (that.amountRangeTo == null) {
+            return that.amountRangeFrom.compareTo(this.amountRangeTo) <= 0;
+        }
         return this.amountRangeFrom.compareTo(that.amountRangeTo) <= 0 && that.amountRangeFrom.compareTo(this.amountRangeTo) <= 0;
     }
 
@@ -297,7 +305,9 @@ public class InterestRateChartSlabFields {
 
     public boolean isIntegerSame(final Integer obj1, final Integer obj2) {
         if (obj1 == null || obj2 == null) {
-            if (Objects.equals(obj1, obj2)) { return true; }
+            if (Objects.equals(obj1, obj2)) {
+                return true;
+            }
             return false;
         }
         return obj1.equals(obj2);
@@ -305,7 +315,9 @@ public class InterestRateChartSlabFields {
 
     public boolean isBigDecimalSame(final BigDecimal obj1, final BigDecimal obj2) {
         if (obj1 == null || obj2 == null) {
-            if (Objects.compare(obj1,obj2, Comparator.nullsFirst(Comparator.naturalOrder())) == 0 ? Boolean.TRUE:Boolean.FALSE){ return true; }
+            if (Objects.compare(obj1, obj2, Comparator.nullsFirst(Comparator.naturalOrder())) == 0 ? Boolean.TRUE : Boolean.FALSE) {
+                return true;
+            }
             return false;
         }
         return obj1.compareTo(obj2) == 0;

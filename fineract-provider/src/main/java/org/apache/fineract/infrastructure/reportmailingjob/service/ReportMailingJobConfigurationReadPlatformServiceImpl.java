@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ReportMailingJobConfigurationReadPlatformServiceImpl implements ReportMailingJobConfigurationReadPlatformService {
+
     private final JdbcTemplate jdbcTemplate;
 
     /**
@@ -61,14 +62,14 @@ public class ReportMailingJobConfigurationReadPlatformServiceImpl implements Rep
         }
 
         catch (final EmptyResultDataAccessException ex) {
-            throw new ReportMailingJobConfigurationNotFoundException(name);
+            throw new ReportMailingJobConfigurationNotFoundException(name, ex);
         }
     }
 
     private static final class ReportMailingJobConfigurationMapper implements RowMapper<ReportMailingJobConfigurationData> {
+
         public String reportMailingJobConfigurationSchema() {
-            return "rmjc.id, rmjc.name, rmjc.value "
-                    + "from m_report_mailing_job_configuration rmjc";
+            return "rmjc.id, rmjc.name, rmjc.value " + "from m_report_mailing_job_configuration rmjc";
         }
 
         @Override

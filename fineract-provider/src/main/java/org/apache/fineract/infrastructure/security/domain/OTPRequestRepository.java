@@ -27,10 +27,10 @@ import org.springframework.util.Assert;
 
 @Repository
 @Profile("twofactor")
+@SuppressWarnings({ "MemberName" })
 public class OTPRequestRepository {
 
     private final ConcurrentHashMap<Long, OTPRequest> OTPrequests = new ConcurrentHashMap<>();
-
 
     public OTPRequest getOTPRequestForUser(AppUser user) {
         Assert.notNull(user, "User must not be null");

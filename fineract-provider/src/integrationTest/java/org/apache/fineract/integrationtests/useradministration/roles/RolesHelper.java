@@ -24,7 +24,11 @@ import io.restassured.specification.ResponseSpecification;
 import java.util.HashMap;
 import org.apache.fineract.integrationtests.common.Utils;
 
-public class RolesHelper {
+public final class RolesHelper {
+
+    private RolesHelper() {
+
+    }
 
     private static final String CREATE_ROLE_URL = "/fineract-provider/api/v1/roles?" + Utils.TENANT_IDENTIFIER;
     private static final String ROLE_URL = "/fineract-provider/api/v1/roles";
@@ -49,15 +53,18 @@ public class RolesHelper {
         return role;
     }
 
-    public static Integer disableRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec, final Integer roleId) {
+    public static Integer disableRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final Integer roleId) {
         return Utils.performServerPost(requestSpec, responseSpec, createRoleOperationURL(DISABLE_ROLE_COMMAND, roleId), "", "resourceId");
     }
 
-    public static Integer enableRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec, final Integer roleId) {
+    public static Integer enableRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final Integer roleId) {
         return Utils.performServerPost(requestSpec, responseSpec, createRoleOperationURL(ENABLE_ROLE_COMMAND, roleId), "", "resourceId");
     }
 
-    public static Integer deleteRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec, final Integer roleId) {
+    public static Integer deleteRole(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final Integer roleId) {
         return Utils.performServerDelete(requestSpec, responseSpec, createRoleOperationURL(ENABLE_ROLE_COMMAND, roleId), "resourceId");
     }
 

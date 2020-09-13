@@ -27,10 +27,10 @@ import org.apache.fineract.spm.data.LookupTableEntry;
 import org.apache.fineract.spm.domain.LookupTable;
 import org.apache.fineract.spm.domain.Survey;
 
-public class LookupTableMapper {
+public final class LookupTableMapper {
 
     private LookupTableMapper() {
-        super();
+
     }
 
     public static List<LookupTableData> map(final List<LookupTable> lookupTables) {
@@ -46,8 +46,8 @@ public class LookupTableMapper {
                     lookupTableData.setDescription(lookupTable.getDescription());
                     lookupTableData.setEntries(new ArrayList<LookupTableEntry>());
                 }
-                lookupTableData.getEntries().add(new LookupTableEntry(lookupTable.getValueFrom(),
-                        lookupTable.getValueTo(), lookupTable.getScore()));
+                lookupTableData.getEntries()
+                        .add(new LookupTableEntry(lookupTable.getValueFrom(), lookupTable.getValueTo(), lookupTable.getScore()));
             }
             return List.copyOf(lookupTableDataMap.values());
         }

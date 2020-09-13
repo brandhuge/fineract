@@ -52,10 +52,14 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
 
     @Override
     public boolean isMakerCheckerEnabledForTask(final String taskPermissionCode) {
-        if (StringUtils.isBlank(taskPermissionCode)) { throw new PermissionNotFoundException(taskPermissionCode); }
+        if (StringUtils.isBlank(taskPermissionCode)) {
+            throw new PermissionNotFoundException(taskPermissionCode);
+        }
 
         final Permission thisTask = this.permissionRepository.findOneByCode(taskPermissionCode);
-        if (thisTask == null) { throw new PermissionNotFoundException(taskPermissionCode); }
+        if (thisTask == null) {
+            throw new PermissionNotFoundException(taskPermissionCode);
+        }
 
         final String makerCheckerConfigurationProperty = "maker-checker";
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(makerCheckerConfigurationProperty);
@@ -78,8 +82,7 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     /*
      * (non-Javadoc)
      *
-     * @see org.apache.fineract.infrastructure.configuration.domain.
-     * ConfigurationDomainService#isHolidaysEnabled()
+     * @see org.apache.fineract.infrastructure.configuration.domain. ConfigurationDomainService#isHolidaysEnabled()
      */
     @Override
     public boolean isRescheduleRepaymentsOnHolidaysEnabled() {
@@ -178,7 +181,9 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Integer retrieveMinAllowedClientsInGroup() {
         final String propertyName = "min-clients-in-group";
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(propertyName);
-        if (property.isEnabled()) { return property.getValue().intValue(); }
+        if (property.isEnabled()) {
+            return property.getValue().intValue();
+        }
         return null;
     }
 
@@ -186,7 +191,9 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Integer retrieveMaxAllowedClientsInGroup() {
         final String propertyName = "max-clients-in-group";
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(propertyName);
-        if (property.isEnabled()) { return property.getValue().intValue(); }
+        if (property.isEnabled()) {
+            return property.getValue().intValue();
+        }
         return null;
     }
 
@@ -243,6 +250,16 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     @Override
     public boolean isSkippingMeetingOnFirstDayOfMonthEnabled() {
         return getGlobalConfigurationPropertyData("skip-repayment-on-first-day-of-month").isEnabled();
+    }
+
+    @Override
+    public boolean isFirstRepaymentDateAfterRescheduleAllowedOnHoliday() {
+        return getGlobalConfigurationPropertyData("loan-reschedule-is-first-payday-allowed-on-holiday").isEnabled();
+    }
+
+    @Override
+    public boolean isInterestToBeAppropriatedEquallyWhenGreaterThanEMI() {
+        return getGlobalConfigurationPropertyData("is-interest-to-be-appropriated-equally-when-greater-than-emi").isEnabled();
     }
 
     @Override
@@ -308,7 +325,7 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(propertyName);
         int defaultValue = 6;
         int value = property.getValue().intValue();
-        if(value < 1) {
+        if (value < 1) {
             return defaultValue;
         }
         return value;
@@ -320,7 +337,7 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(propertyName);
         int defaultValue = 300;
         int value = property.getValue().intValue();
-        if(value < 1) {
+        if (value < 1) {
             return defaultValue;
         }
         return value;
@@ -339,9 +356,9 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     @Override
     public boolean isSubRatesEnabled() {
         GlobalConfigurationPropertyData configuration = getGlobalConfigurationPropertyData("sub-rates");
-        if (configuration==null){
+        if (configuration == null) {
             return false;
-        }else{
+        } else {
             return configuration.isEnabled();
         }
     }

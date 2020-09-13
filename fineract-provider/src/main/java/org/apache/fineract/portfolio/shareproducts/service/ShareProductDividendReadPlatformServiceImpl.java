@@ -49,8 +49,7 @@ public class ShareProductDividendReadPlatformServiceImpl implements ShareProduct
     private final PaginationHelper<ShareProductDividendPayOutData> paginationHelper = new PaginationHelper<>();
 
     @Autowired
-    public ShareProductDividendReadPlatformServiceImpl(final RoutingDataSource dataSource,
-            final ColumnValidator columnValidator) {
+    public ShareProductDividendReadPlatformServiceImpl(final RoutingDataSource dataSource, final ColumnValidator columnValidator) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.columnValidator = columnValidator;
     }
@@ -96,7 +95,7 @@ public class ShareProductDividendReadPlatformServiceImpl implements ShareProduct
 
         private final String sql;
 
-        public ShareProductDividendMapper() {
+        ShareProductDividendMapper() {
             StringBuilder sb = new StringBuilder();
             sb.append(" pod.id as id, pod.amount as amount,");
             sb.append(" pod.status as status, pod.dividend_period_start_date as startDate,");

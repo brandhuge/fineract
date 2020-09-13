@@ -18,9 +18,7 @@
  */
 package org.apache.fineract.portfolio.shareproducts.api;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.SwaggerDefinition;
-import io.swagger.annotations.Tag;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -52,10 +50,8 @@ import org.springframework.stereotype.Component;
 @Path("/shareproduct/{productId}/dividend")
 @Component
 @Scope("singleton")
-@Api(tags = {"Self Dividend"})
-@SwaggerDefinition(tags = {
-        @Tag(name = "Self Dividend", description = "")
-})
+
+@Tag(name = "Self Dividend", description = "")
 public class ShareDividendApiResource {
 
     private final DefaultToApiJsonSerializer<ShareProductDividendPayOutData> toApiJsonSerializer;
@@ -101,7 +97,8 @@ public class ShareDividendApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveDividendDetails(@PathParam("dividendId") final Long dividendId, @QueryParam("offset") final Integer offset,
             @QueryParam("limit") final Integer limit, @QueryParam("orderBy") final String orderBy,
-            @QueryParam("sortOrder") final String sortOrder, @QueryParam("accountNo") final String accountNo) {
+            @QueryParam("sortOrder") final String sortOrder, @QueryParam("accountNo") final String accountNo,
+            @PathParam("productId") final Long productId) {
 
         this.platformSecurityContext.authenticatedUser().validateHasReadPermission(this.resourceNameForPermissions);
         final SearchParameters searchParameters = SearchParameters.forPaginationAndAccountNumberSearch(offset, limit, orderBy, sortOrder,

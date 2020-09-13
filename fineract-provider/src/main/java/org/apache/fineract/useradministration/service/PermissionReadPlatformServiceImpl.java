@@ -34,7 +34,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class PermissionReadPlatformServiceImpl implements PermissionReadPlatformService {
 
-    private final static Logger LOG = LoggerFactory.getLogger(PermissionReadPlatformServiceImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PermissionReadPlatformServiceImpl.class);
 
     private final JdbcTemplate jdbcTemplate;
     private final PlatformSecurityContext context;
@@ -101,9 +101,8 @@ public class PermissionReadPlatformServiceImpl implements PermissionReadPlatform
 
         public String makerCheckerablePermissionSchema() {
             /*
-             * get all 'Maker-Checkerable' permissions - Maintenance permissions
-             * (i.e. exclude the 'special' grouping, the READ permissions and
-             * the CHECKER permissions
+             * get all 'Maker-Checkerable' permissions - Maintenance permissions (i.e. exclude the 'special' grouping,
+             * the READ permissions and the CHECKER permissions
              */
 
             return "select p.grouping, p.code, p.entity_name as entityName, p.action_name as actionName, p.can_maker_checker as selected"
@@ -113,8 +112,7 @@ public class PermissionReadPlatformServiceImpl implements PermissionReadPlatform
 
         public String rolePermissionSchema() {
             return "select p.grouping, p.code, p.entity_name as entityName, p.action_name as actionName, if(isnull(rp.role_id), false, true) as selected "
-                    + " from m_permission p "
-                    + " left join m_role_permission rp on rp.permission_id = p.id and rp.role_id = ? "
+                    + " from m_permission p " + " left join m_role_permission rp on rp.permission_id = p.id and rp.role_id = ? "
                     + " order by p.grouping, ifnull(entity_name, ''), p.code";
         }
     }

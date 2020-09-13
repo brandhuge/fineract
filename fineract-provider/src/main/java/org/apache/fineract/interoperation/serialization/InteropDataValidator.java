@@ -20,8 +20,8 @@ package org.apache.fineract.interoperation.serialization;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
-import javax.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -46,12 +46,23 @@ public class InteropDataValidator {
         this.jsonHelper = fromJsonHelper;
     }
 
+    public InteropTransferRequestData validateAndParseTransferRequest(JsonCommand command) {
+        final DataValidatorBuilder dataValidator = new DataValidatorBuilder(new ArrayList<>()).resource("interoperation.transfer");
+        JsonObject element = extractJsonObject(command);
+
+        InteropTransferRequestData result = InteropTransferRequestData.validateAndParse(dataValidator, element, jsonHelper);
+        throwExceptionIfValidationWarningsExist(dataValidator);
+
+        return result;
+    }
+
     public InteropIdentifierRequestData validateAndParseCreateIdentifier(@NotNull InteropIdentifierType idType, @NotNull String idValue,
-                                                                          String subIdOrType, JsonCommand command) {
+            String subIdOrType, JsonCommand command) {
         final DataValidatorBuilder dataValidator = new DataValidatorBuilder(new ArrayList<>()).resource("interoperation.identifier");
         JsonObject element = extractJsonObject(command);
 
-        InteropIdentifierRequestData result = InteropIdentifierRequestData.validateAndParse(dataValidator, idType, idValue, subIdOrType, element, jsonHelper);
+        InteropIdentifierRequestData result = InteropIdentifierRequestData.validateAndParse(dataValidator, idType, idValue, subIdOrType,
+                element, jsonHelper);
         throwExceptionIfValidationWarningsExist(dataValidator);
 
         return result;
@@ -103,8 +114,8 @@ public class InteropDataValidator {
 
     private void throwExceptionIfValidationWarningsExist(DataValidatorBuilder dataValidator) {
         if (dataValidator.hasError()) {
-            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist",
-                    "Validation errors exist.", dataValidator.getDataValidationErrors());
+            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                    dataValidator.getDataValidationErrors());
         }
     }
 }

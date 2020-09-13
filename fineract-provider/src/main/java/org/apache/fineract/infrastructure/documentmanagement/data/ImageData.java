@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 public class ImageData {
 
-    private final static Logger LOG = LoggerFactory.getLogger(ImageData.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ImageData.class);
 
     @SuppressWarnings("unused")
     private final Long imageId;
@@ -105,7 +105,9 @@ public class ImageData {
     }
 
     public byte[] getContentOfSize(Integer maxWidth, Integer maxHeight) {
-        if (maxWidth == null && maxHeight != null) { return getContent(); }
+        if (maxWidth == null && maxHeight != null) {
+            return getContent();
+        }
         byte[] out = null;
         if (this.storageType.equals(StorageType.S3.getValue()) && this.inputStream != null) {
             try {
@@ -198,7 +200,7 @@ public class ImageData {
                     try {
                         fileInputStream.close();
                     } catch (IOException e) {
-                        LOG.error("Problem occurred in available function",e);
+                        LOG.error("Problem occurred in available function", e);
                     }
                 }
             }

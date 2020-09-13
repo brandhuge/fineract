@@ -34,6 +34,8 @@ import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityEx
 import org.apache.fineract.portfolio.calendar.domain.CalendarWeekDaysType;
 import org.apache.fineract.portfolio.calendar.service.CalendarEnumerations;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -41,28 +43,29 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
 public class SmsCampaignDropdownReadPlatformServiceImpl implements SmsCampaignDropdownReadPlatformService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SmsCampaignDropdownReadPlatformServiceImpl.class);
     private final RestTemplate restTemplate;
 
-    private final SmsConfigUtils smsConfigUtils ;
+    private final SmsConfigUtils smsConfigUtils;
 
     @Autowired
     public SmsCampaignDropdownReadPlatformServiceImpl(final SmsConfigUtils smsConfigUtils) {
         this.restTemplate = new RestTemplate();
-        this.smsConfigUtils = smsConfigUtils ;
+        this.smsConfigUtils = smsConfigUtils;
     }
 
     @Override
     public Collection<EnumOptionData> retrieveCampaignTriggerTypes() {
-        final List<EnumOptionData> triggerTypeCodeValues = Arrays.asList( //
-                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.DIRECT), //
-                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.SCHEDULE), //
-                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.TRIGGERED) //
-                );
+        final List<EnumOptionData> triggerTypeCodeValues = Arrays.asList(
+                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.DIRECT),
+                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.SCHEDULE),
+                SmsCampaignEnumerations.smscampaignTriggerType(SmsCampaignTriggerType.TRIGGERED));
 
         return triggerTypeCodeValues;
     }
@@ -70,26 +73,31 @@ public class SmsCampaignDropdownReadPlatformServiceImpl implements SmsCampaignDr
     @Override
     public Collection<SmsProviderData> retrieveSmsProviders() {
         Collection<SmsProviderData> smsProviderOptions = new ArrayList<>();
-        String hostName = "" ;
-            Map<String, Object> hostConfig = this.smsConfigUtils.getMessageGateWayRequestURI("smsbridges", null);
-            URI uri = (URI) hostConfig.get("uri");
-            hostName = uri.getHost() ;
-            HttpEntity<?> entity = (HttpEntity<?>) hostConfig.get("entity");
-            ResponseEntity<Collection<SmsProviderData>> responseOne = restTemplate.exchange(uri, HttpMethod.GET, entity,
+        Map<String, Object> hostConfig = this.smsConfigUtils.getMessageGateWayRequestURI("smsbridges", null);
+        URI uri = (URI) hostConfig.get("uri");
+        HttpEntity<?> entity = (HttpEntity<?>) hostConfig.get("entity");
+
+        ResponseEntity<Collection<SmsProviderData>> responseOne = null;
+
+        try {
+            responseOne = restTemplate.exchange(uri, HttpMethod.GET, entity,
                     new ParameterizedTypeReference<Collection<SmsProviderData>>() {});
-             if (!responseOne.getStatusCode().equals(HttpStatus.OK)) {
-                throw new PlatformDataIntegrityException("error.msg.mobile.service.provider.not.available",
-                "Mobile service provider not available.");
-             }
-            smsProviderOptions = responseOne.getBody();
-            return smsProviderOptions;
+        } catch (ResourceAccessException ex) {
+            LOG.debug("Mobile service provider {} not available", uri, ex);
+        }
+
+        if (responseOne == null || !responseOne.getStatusCode().equals(HttpStatus.OK)) {
+            throw new PlatformDataIntegrityException("error.msg.mobile.service.provider.not.available",
+                    "Mobile service provider not available.");
+        }
+
+        smsProviderOptions = responseOne.getBody();
+        return smsProviderOptions;
     }
 
     @Override
     public Collection<EnumOptionData> retrieveCampaignTypes() {
-        final List<EnumOptionData> campaignTypeCodeValues = Arrays.asList( //
-                SmsCampaignEnumerations.smscampaignType(CampaignType.SMS)//
-                );
+        final List<EnumOptionData> campaignTypeCodeValues = Arrays.asList(SmsCampaignEnumerations.smscampaignType(CampaignType.SMS));
         return campaignTypeCodeValues;
     }
 

@@ -28,23 +28,27 @@ import java.util.Random;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.accounting.Account;
 
-public class ProvisioningHelper {
+public final class ProvisioningHelper {
 
-    public final static Map createProvisioingCriteriaJson(ArrayList<Integer> loanProducts, ArrayList categories, Account liability,
+    private ProvisioningHelper() {
+
+    }
+
+    public static Map createProvisioingCriteriaJson(ArrayList<Integer> loanProducts, ArrayList categories, Account liability,
             Account expense) {
         final HashMap<String, Object> map = new HashMap<>();
         map.put("loanProducts", addLoanProducts(loanProducts));
         map.put("definitions", addProvisioningCategories(categories, liability, expense));
         DateFormat simple = new SimpleDateFormat("dd MMMM yyyy");
         String formattedString = simple.format(Utils.getLocalDateOfTenant().toDate());
-        Random rand = new Random() ;
-        String criteriaName = "General Provisioning Criteria" + formattedString+rand.nextLong();
+        Random rand = new Random();
+        String criteriaName = "General Provisioning Criteria" + formattedString + rand.nextLong();
         map.put("criteriaName", criteriaName);
         map.put("locale", "en");
-       return map ;
+        return map;
     }
 
-    public final static String createProvisioningEntryJson() {
+    public static String createProvisioningEntryJson() {
         final HashMap<String, Object> map = new HashMap<>();
         map.put("createjournalentries", Boolean.FALSE);
         map.put("locale", "en");
@@ -55,7 +59,7 @@ public class ProvisioningHelper {
         return provisioningEntryCreateJson;
     }
 
-    public final static String createProvisioningEntryJsonWithJournalsEnabled() {
+    public static String createProvisioningEntryJsonWithJournalsEnabled() {
         final HashMap<String, Object> map = new HashMap<>();
         map.put("createjournalentries", Boolean.TRUE);
         map.put("locale", "en");
@@ -90,9 +94,9 @@ public class ProvisioningHelper {
             if (i == categories.size() - 1) {
                 map.put("maxAge", 90000);
             } else {
-                map.put("maxAge", (i+1) * 30);
+                map.put("maxAge", (i + 1) * 30);
             }
-            map.put("provisioningPercentage", Float.valueOf((float)((i + 1) * 5.5)));
+            map.put("provisioningPercentage", Float.valueOf((float) ((i + 1) * 5.5)));
             map.put("liabilityAccount", liability.getAccountID());
             map.put("expenseAccount", expense.getAccountID());
             list.add(map);

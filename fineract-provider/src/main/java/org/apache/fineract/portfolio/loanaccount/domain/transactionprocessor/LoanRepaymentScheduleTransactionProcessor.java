@@ -43,13 +43,12 @@ public interface LoanRepaymentScheduleTransactionProcessor {
             List<LoanRepaymentScheduleInstallment> installments);
 
     /**
-     * Used in interest recalculation to introduce new interest only
-     * installment.
+     * Used in interest recalculation to introduce new interest only installment.
      */
     boolean isInterestFirstRepaymentScheduleTransactionProcessor();
 
     void handleRefund(LoanTransaction loanTransaction, MonetaryCurrency currency, List<LoanRepaymentScheduleInstallment> installments,
-            final Set<LoanCharge> charges);
+            Set<LoanCharge> charges);
 
     void processTransactionsFromDerivedFields(List<LoanTransaction> transactionsPostDisbursement, MonetaryCurrency currency,
             List<LoanRepaymentScheduleInstallment> installments, Set<LoanCharge> charges);

@@ -25,8 +25,9 @@ import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourc
  */
 public class StaffRoleException extends AbstractPlatformResourceNotFoundException {
 
-    public static enum StaffRole {
-        LOAN_OFFICER, BRANCH_MANAGER,SAVINGS_OFFICER;
+    public enum StaffRole {
+
+        LOAN_OFFICER, BRANCH_MANAGER, SAVINGS_OFFICER;
 
         @Override
         public String toString() {

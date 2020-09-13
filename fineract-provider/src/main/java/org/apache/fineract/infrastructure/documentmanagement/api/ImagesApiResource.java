@@ -21,7 +21,6 @@ package org.apache.fineract.infrastructure.documentmanagement.api;
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataParam;
-import io.swagger.annotations.Api;
 import java.io.InputStream;
 import java.util.Base64;
 import javax.ws.rs.Consumes;
@@ -56,7 +55,7 @@ import org.springframework.stereotype.Component;
 @Path("{entity}/{entityId}/images")
 @Component
 @Scope("singleton")
-@Api(value = "DomainName//api//v1//{entity}//{entityId}//images", description = "")
+
 public class ImagesApiResource {
 
     private final PlatformSecurityContext context;
@@ -127,8 +126,9 @@ public class ImagesApiResource {
             this.context.authenticatedUser().validateHasReadPermission("STAFFIMAGE");
         }
 
-        if (output != null && (output.equals("octet") || output.equals("inline_octet"))) { return downloadClientImage(entityName, entityId,
-                maxWidth, maxHeight, output); }
+        if (output != null && (output.equals("octet") || output.equals("inline_octet"))) {
+            return downloadClientImage(entityName, entityId, maxWidth, maxHeight, output);
+        }
 
         final ImageData imageData = this.imageReadPlatformService.retrieveImage(entityName, entityId);
 
@@ -162,8 +162,8 @@ public class ImagesApiResource {
 
         final ResponseBuilder response = Response.ok(imageData.getContentOfSize(maxWidth, maxHeight));
         String dispositionType = "inline_octet".equals(output) ? "inline" : "attachment";
-        response.header("Content-Disposition", dispositionType + "; filename=\"" + imageData.getEntityDisplayName()
-        + ImageFileExtension.JPEG + "\"");
+        response.header("Content-Disposition",
+                dispositionType + "; filename=\"" + imageData.getEntityDisplayName() + ImageFileExtension.JPEG + "\"");
 
         // TODO: Need a better way of determining image type
 
@@ -172,8 +172,8 @@ public class ImagesApiResource {
     }
 
     /**
-     * This method is added only for consistency with other URL patterns and for
-     * maintaining consistency of usage of the HTTP "verb" at the client side
+     * This method is added only for consistency with other URL patterns and for maintaining consistency of usage of the
+     * HTTP "verb" at the client side
      */
     @PUT
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
@@ -185,8 +185,8 @@ public class ImagesApiResource {
     }
 
     /**
-     * This method is added only for consistency with other URL patterns and for
-     * maintaining consistency of usage of the HTTP "verb" at the client side
+     * This method is added only for consistency with other URL patterns and for maintaining consistency of usage of the
+     * HTTP "verb" at the client side
      *
      * Upload image as a Data URL (essentially a base64 encoded stream)
      */
@@ -209,6 +209,7 @@ public class ImagesApiResource {
 
     /*** Entities for document Management **/
     public enum EntityTypeForImages {
+
         STAFF, CLIENTS;
 
         @Override
@@ -218,12 +219,16 @@ public class ImagesApiResource {
     }
 
     private void validateEntityTypeforImage(final String entityName) {
-        if (!checkValidEntityType(entityName)) { throw new InvalidEntityTypeForImageManagementException(entityName); }
+        if (!checkValidEntityType(entityName)) {
+            throw new InvalidEntityTypeForImageManagementException(entityName);
+        }
     }
 
     private static boolean checkValidEntityType(final String entityType) {
         for (final EntityTypeForImages entities : EntityTypeForImages.values()) {
-            if (entities.name().equalsIgnoreCase(entityType)) { return true; }
+            if (entities.name().equalsIgnoreCase(entityType)) {
+                return true;
+            }
         }
         return false;
     }

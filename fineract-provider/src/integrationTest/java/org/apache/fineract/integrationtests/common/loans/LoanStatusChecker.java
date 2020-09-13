@@ -18,9 +18,9 @@
  */
 package org.apache.fineract.integrationtests.common.loans;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
@@ -28,7 +28,11 @@ import java.util.HashMap;
 import org.apache.fineract.integrationtests.common.Utils;
 
 @SuppressWarnings("rawtypes")
-public class LoanStatusChecker {
+public final class LoanStatusChecker {
+
+    private LoanStatusChecker() {
+
+    }
 
     public static void verifyLoanIsApproved(final HashMap loanStatusHashMap) {
         assertFalse(getStatus(loanStatusHashMap, "pendingApproval"));

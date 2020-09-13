@@ -31,7 +31,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service
-public class TopicSubscriberReadPlatformServiceImpl implements TopicSubscriberReadPlatformService{
+public class TopicSubscriberReadPlatformServiceImpl implements TopicSubscriberReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -44,7 +44,7 @@ public class TopicSubscriberReadPlatformServiceImpl implements TopicSubscriberRe
 
         private final String schema;
 
-        public TopicSubscriberMapper() {
+        TopicSubscriberMapper() {
             final StringBuilder sqlBuilder = new StringBuilder(200);
             sqlBuilder.append("ts.id as id, ts.topic_id as topicId, ts.user_id as userId, ");
             sqlBuilder.append("ts.subscription_date as subscriptionDate from topic_subscriber ts ");

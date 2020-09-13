@@ -18,12 +18,16 @@
  */
 package org.apache.fineract.portfolio.rate.api;
 
-public class RateApiConstants {
+public final class RateApiConstants {
 
-  public static final String approveUserIdParamName = "approveUserId";
-  public static final String rate = "rate";
-  public static final String rateName = "name";
-  public static final String ratePercentage = "percentage";
-  public static final String rateProductApply = "productApply";
+    private RateApiConstants() {
+
+    }
+
+    public static final String approveUserIdParamName = "approveUserId";
+    public static final String rate = "rate";
+    public static final String rateName = "name";
+    public static final String ratePercentage = "percentage";
+    public static final String rateProductApply = "productApply";
 
 }

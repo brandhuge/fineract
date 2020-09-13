@@ -18,7 +18,9 @@
  */
 package org.apache.fineract.interoperation.domain;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.Date;
+import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -29,15 +31,13 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
-import javax.validation.constraints.NotNull;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 
 @Entity
 @Table(name = "interop_identifier", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_hathor_identifier_account", columnNames = {"account_id", "type"}),
-        @UniqueConstraint(name = "uk_hathor_identifier_value", columnNames = {"type", "a_value", "sub_value_or_type"})
-})
+        @UniqueConstraint(name = "uk_hathor_identifier_account", columnNames = { "account_id", "type" }),
+        @UniqueConstraint(name = "uk_hathor_identifier_value", columnNames = { "type", "a_value", "sub_value_or_type" }) })
 public class InteropIdentifier extends AbstractPersistableCustom {
 
     @ManyToOne(optional = false)
@@ -52,7 +52,7 @@ public class InteropIdentifier extends AbstractPersistableCustom {
     private String value;
 
     @Column(name = "sub_value_or_type", length = 128)
-    private String subValueOrType;
+    private String subType;
 
     @Column(name = "created_by", nullable = false, length = 32)
     private String createdBy;
@@ -68,22 +68,20 @@ public class InteropIdentifier extends AbstractPersistableCustom {
     @Column(name = "modified_on")
     private Date modifiedOn;
 
+    protected InteropIdentifier() {}
 
-    protected InteropIdentifier() {
-    }
-
-    public InteropIdentifier(@NotNull SavingsAccount account, @NotNull InteropIdentifierType type, @NotNull String value,
-                                   String subValueOrType, @NotNull String createdBy, @NotNull Date createdOn) {
+    public InteropIdentifier(@NotNull SavingsAccount account, @NotNull InteropIdentifierType type, @NotNull String value, String subType,
+            @NotNull String createdBy, @NotNull Date createdOn) {
         this.account = account;
         this.type = type;
         this.value = value;
-        this.subValueOrType = subValueOrType;
+        this.subType = subType;
         this.createdBy = createdBy;
         this.createdOn = createdOn;
     }
 
     public InteropIdentifier(@NotNull SavingsAccount account, @NotNull InteropIdentifierType type, @NotNull String createdBy,
-                                   @NotNull Date createdOn) {
+            @NotNull Date createdOn) {
         this(account, type, null, null, createdBy, createdOn);
     }
 
@@ -91,16 +89,8 @@ public class InteropIdentifier extends AbstractPersistableCustom {
         return account;
     }
 
-    private void setAccount(SavingsAccount account) {
-        this.account = account;
-    }
-
     public InteropIdentifierType getType() {
         return type;
-    }
-
-    private void setType(InteropIdentifierType type) {
-        this.type = type;
     }
 
     public String getValue() {
@@ -111,28 +101,20 @@ public class InteropIdentifier extends AbstractPersistableCustom {
         this.value = value;
     }
 
-    public String getSubValueOrType() {
-        return subValueOrType;
+    public String getSubType() {
+        return subType;
     }
 
-    public void setSubValueOrType(String subValueOrType) {
-        this.subValueOrType = subValueOrType;
+    public void setSubType(String subType) {
+        this.subType = subType;
     }
 
     public String getCreatedBy() {
         return createdBy;
     }
 
-    private void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
-
     public Date getCreatedOn() {
         return createdOn;
-    }
-
-    private void setCreatedOn(Date createdOn) {
-        this.createdOn = createdOn;
     }
 
     public String geModifiedBy() {
@@ -171,14 +153,14 @@ public class InteropIdentifier extends AbstractPersistableCustom {
         if (!value.equals(that.value)) {
             return false;
         }
-        return subValueOrType != null ? subValueOrType.equals(that.subValueOrType) : that.subValueOrType == null;
+        return Objects.equals(subType, that.subType);
     }
 
     @Override
     public int hashCode() {
         int result = type.hashCode();
         result = 31 * result + value.hashCode();
-        result = 31 * result + (subValueOrType != null ? subValueOrType.hashCode() : 0);
+        result = 31 * result + (subType != null ? subType.hashCode() : 0);
         return result;
     }
 }
