@@ -50,7 +50,7 @@ public final class ScorecardMapper {
                 ScorecardMapper.setQuestionAndResponse(scorecardValue, scorecard, survey);
                 scorecard.setAppUser(appUser);
                 scorecard.setClient(client);
-                scorecard.setCreatedOn(DateUtils.getLocalDateOfTenant().toDate());
+                scorecard.setCreatedOn(DateUtils.getLocalDateTimeOfTenant());
                 scorecard.setValue(scorecardValue.getValue());
             }
         } else {

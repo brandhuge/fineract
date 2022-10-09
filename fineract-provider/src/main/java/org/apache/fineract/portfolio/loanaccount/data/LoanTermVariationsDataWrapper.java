@@ -18,11 +18,11 @@
  */
 package org.apache.fineract.portfolio.loanaccount.data;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import org.joda.time.LocalDate;
 
 public class LoanTermVariationsDataWrapper {
 
@@ -54,7 +54,7 @@ public class LoanTermVariationsDataWrapper {
         boolean hasVariation = false;
         if (iterator.hasNext()) {
             LoanTermVariationsData loanTermVariationsData = iterator.next();
-            if (!loanTermVariationsData.getTermApplicableFrom().isAfter(date)) {
+            if (!loanTermVariationsData.getTermVariationApplicableFrom().isAfter(date)) {
                 hasVariation = true;
             }
             iterator.previous();
@@ -123,7 +123,7 @@ public class LoanTermVariationsDataWrapper {
     public LoanTermVariationsData fetchLoanTermDueDateVariationsData(final LocalDate onDate) {
         LoanTermVariationsData data = null;
         for (LoanTermVariationsData termVariationsData : this.dueDateVariation) {
-            if (onDate.isEqual(termVariationsData.getTermApplicableFrom())) {
+            if (onDate.isEqual(termVariationsData.getTermVariationApplicableFrom())) {
                 data = termVariationsData;
                 break;
             }

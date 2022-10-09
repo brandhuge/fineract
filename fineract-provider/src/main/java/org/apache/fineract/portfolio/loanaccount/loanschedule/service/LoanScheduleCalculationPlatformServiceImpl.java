@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.loanschedule.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -54,11 +55,12 @@ import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.loanproduct.exception.LoanProductNotFoundException;
 import org.apache.fineract.portfolio.loanproduct.serialization.LoanProductDataValidator;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleCalculationPlatformService {
 
     private final CalculateLoanScheduleQueryFromApiJsonHelper fromApiJsonDeserializer;
@@ -142,7 +144,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
 
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
 
-        LocalDate today = DateUtils.getLocalDateOfTenant();
+        LocalDate today = DateUtils.getBusinessLocalDate();
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = loanRepaymentScheduleTransactionProcessorFactory
                 .determineProcessor(loan.transactionProcessingStrategy());
 
@@ -187,16 +189,16 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         LoanScheduleData scheduleDate = model.toData();
         Collection<LoanSchedulePeriodData> periodDatas = scheduleDate.getPeriods();
         for (LoanSchedulePeriodData periodData : periodDatas) {
-            if ((periodData.periodDueDate().isEqual(today) || periodData.periodDueDate().isAfter(today)) && isNewPaymentRequired) {
-                LoanSchedulePeriodData loanSchedulePeriodData = LoanSchedulePeriodData.repaymentOnlyPeriod(periodData.periodNumber(),
-                        periodData.periodFromDate(), periodData.periodDueDate(), totalPrincipal.getAmount(),
-                        periodData.principalLoanBalanceOutstanding(), interestDue.getAmount(),
+            if ((periodData.getDueDate().isEqual(today) || periodData.getDueDate().isAfter(today)) && isNewPaymentRequired) {
+                LoanSchedulePeriodData loanSchedulePeriodData = LoanSchedulePeriodData.repaymentOnlyPeriod(periodData.getPeriod(),
+                        periodData.getFromDate(), periodData.getDueDate(), totalPrincipal.getAmount(),
+                        periodData.getPrincipalLoanBalanceOutstanding(), interestDue.getAmount(),
                         loanRepaymentScheduleInstallment.getFeeChargesCharged(currency).getAmount(),
                         loanRepaymentScheduleInstallment.getPenaltyChargesCharged(currency).getAmount(), totalAmount.getAmount(),
                         totalPrincipal.plus(interestDue).getAmount());
                 futureInstallments.add(loanSchedulePeriodData);
                 isNewPaymentRequired = false;
-            } else if (periodData.periodDueDate().isAfter(today)) {
+            } else if (periodData.getDueDate().isAfter(today)) {
                 futureInstallments.add(periodData);
             }
 
@@ -205,6 +207,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LoanScheduleData generateLoanScheduleForVariableInstallmentRequest(Long loanId, final String json) {
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
         this.loanScheduleAssembler.assempleVariableScheduleFrom(loan, json);
@@ -215,7 +218,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         Collection<LoanRepaymentScheduleInstallment> installments = loan.getRepaymentScheduleInstallments();
         final List<LoanSchedulePeriodData> installmentData = new ArrayList<>();
         final MonetaryCurrency currency = loan.getCurrency();
-        Money outstanding = loan.getPrincpal();
+        Money outstanding = loan.getPrincipal();
 
         List<LoanDisbursementDetails> disbursementDetails = new ArrayList<>();
         if (loan.isMultiDisburmentLoan()) {

@@ -18,10 +18,11 @@
  */
 package org.apache.fineract.infrastructure.core.data;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
+import javax.ws.rs.core.Response.Status;
 
 /**
  *
@@ -53,6 +54,7 @@ public class ApiGlobalErrorResponse {
      * A list of zero or more of the actual reasons for the HTTP error should they be needed. Typically used to express
      * data validation errors with parameters passed to API.
      */
+
     private List<ApiParameterError> errors = new ArrayList<>();
 
     public static ApiGlobalErrorResponse unAuthenticated() {
@@ -72,7 +74,17 @@ public class ApiGlobalErrorResponse {
         globalErrorResponse.setHttpStatusCode("401");
         globalErrorResponse.setDeveloperMessage("Invalid tenant details were passed in api request.");
         globalErrorResponse.setUserMessageGlobalisationCode("error.msg.invalid.tenant.identifier");
-        globalErrorResponse.setDefaultUserMessage("Invalide tenant identifier provided with request.");
+        globalErrorResponse.setDefaultUserMessage("Invalid tenant identifier provided with request.");
+
+        return globalErrorResponse;
+    }
+
+    public static ApiGlobalErrorResponse invalidInstanceTypeMethod(final String method) {
+        final ApiGlobalErrorResponse globalErrorResponse = new ApiGlobalErrorResponse();
+        globalErrorResponse.setHttpStatusCode(Status.METHOD_NOT_ALLOWED.toString());
+        globalErrorResponse.setDeveloperMessage("Invalid instance type called in api request for the method " + method);
+        globalErrorResponse.setUserMessageGlobalisationCode("error.msg.invalid.instance.type");
+        globalErrorResponse.setDefaultUserMessage("Invalid method " + method + " used with request to this instance type.");
 
         return globalErrorResponse;
     }
@@ -186,16 +198,13 @@ public class ApiGlobalErrorResponse {
         return globalErrorResponse;
     }
 
-    protected ApiGlobalErrorResponse() {
-        //
-    }
+    protected ApiGlobalErrorResponse() {}
 
     public ApiGlobalErrorResponse(final List<ApiParameterError> errors) {
         this.errors = errors;
     }
 
-    @XmlElementWrapper(name = "errors")
-    @XmlElement(name = "errorResponse")
+    @JsonProperty("errors")
     public List<ApiParameterError> getErrors() {
         return this.errors;
     }
@@ -234,5 +243,10 @@ public class ApiGlobalErrorResponse {
 
     public void setUserMessageGlobalisationCode(final String userMessageGlobalisationCode) {
         this.userMessageGlobalisationCode = userMessageGlobalisationCode;
+    }
+
+    public String toJson() {
+        final Gson gson = new Gson();
+        return gson.toJson(this);
     }
 }

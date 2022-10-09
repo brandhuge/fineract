@@ -22,6 +22,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,7 +36,6 @@ import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.security.utils.SQLInjectionValidator;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -151,7 +151,7 @@ public class AdHocQueryDataValidator {
                         .extractBigDecimalWithLocaleNamed(AdHocQuerySearchConstants.maxOutStandingAmountPercentageParamName, element);
                 baseDataValidator.reset().parameter(AdHocQuerySearchConstants.maxOutStandingAmountPercentageParamName)
                         .value(maxOutStandingAmountPercentage).notNull().notLessThanMin(BigDecimal.ZERO);
-                baseDataValidator.reset().comapareMinAndMaxOfTwoBigDecmimalNos(minOutStandingAmountPercentage,
+                baseDataValidator.reset().compareMinAndMaxOfTwoBigDecmimalNos(minOutStandingAmountPercentage,
                         maxOutStandingAmountPercentage);
             } else {
                 if (this.fromApiJsonHelper.parameterExists(AdHocQuerySearchConstants.outStandingAmountPercentageParamName, element)) {
@@ -184,7 +184,7 @@ public class AdHocQueryDataValidator {
                         .extractBigDecimalWithLocaleNamed(AdHocQuerySearchConstants.maxOutstandingAmountParamName, element);
                 baseDataValidator.reset().parameter(AdHocQuerySearchConstants.maxOutstandingAmountParamName).value(maxOutstandingAmount)
                         .notNull().notLessThanMin(BigDecimal.ZERO);
-                baseDataValidator.reset().comapareMinAndMaxOfTwoBigDecmimalNos(minOutstandingAmount, maxOutstandingAmount);
+                baseDataValidator.reset().compareMinAndMaxOfTwoBigDecmimalNos(minOutstandingAmount, maxOutstandingAmount);
             } else {
                 final BigDecimal outstandingAmount = this.fromApiJsonHelper
                         .extractBigDecimalWithLocaleNamed(AdHocQuerySearchConstants.outstandingAmountParamName, element);

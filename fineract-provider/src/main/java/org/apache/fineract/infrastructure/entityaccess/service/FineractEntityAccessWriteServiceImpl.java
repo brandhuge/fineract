@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.infrastructure.entityaccess.service;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.Map;
 import javax.persistence.PersistenceException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -95,19 +95,19 @@ public class FineractEntityAccessWriteServiceImpl implements FineractEntityAcces
 
             final Long fromId = command.longValueOfParameterNamed(FineractEntityApiResourceConstants.fromEnityType);
             final Long toId = command.longValueOfParameterNamed(FineractEntityApiResourceConstants.toEntityType);
-            final Date startDate = command.dateValueOfParameterNamed(FineractEntityApiResourceConstants.startDate);
-            final Date endDate = command.dateValueOfParameterNamed(FineractEntityApiResourceConstants.endDate);
+            final LocalDate startDate = command.localDateValueOfParameterNamed(FineractEntityApiResourceConstants.startDate);
+            final LocalDate endDate = command.localDateValueOfParameterNamed(FineractEntityApiResourceConstants.endDate);
 
             fromApiJsonDeserializer.checkForEntity(relId.toString(), fromId, toId);
             if (startDate != null && endDate != null) {
-                if (endDate.before(startDate)) {
+                if (endDate.isBefore(startDate)) {
                     throw new FineractEntityToEntityMappingDateException(startDate.toString(), endDate.toString());
                 }
             }
 
             final FineractEntityToEntityMapping newMap = FineractEntityToEntityMapping.newMap(mapId, fromId, toId, startDate, endDate);
 
-            this.fineractEntityToEntityMappingRepository.save(newMap);
+            this.fineractEntityToEntityMappingRepository.saveAndFlush(newMap);
 
             return new CommandProcessingResultBuilder().withEntityId(newMap.getId()).withCommandId(command.commandId()).build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {

@@ -18,7 +18,8 @@
  */
 package org.apache.fineract.infrastructure.reportmailingjob.domain;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.persistence.Column;
@@ -26,21 +27,16 @@ import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.domain.Report;
 import org.apache.fineract.infrastructure.reportmailingjob.ReportMailingJobConstants;
 import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJobEmailAttachmentFileFormat;
 import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJobPreviousRunStatus;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "m_report_mailing_job", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }, name = "unique_name") })
@@ -55,8 +51,7 @@ public class ReportMailingJob extends AbstractAuditableCustom {
     private String description;
 
     @Column(name = "start_datetime", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date startDateTime;
+    private LocalDateTime startDateTime;
 
     @Column(name = "recurrence", nullable = true)
     private String recurrence;
@@ -81,12 +76,10 @@ public class ReportMailingJob extends AbstractAuditableCustom {
     private String stretchyReportParamMap;
 
     @Column(name = "previous_run_datetime", nullable = true)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date previousRunDateTime;
+    private LocalDateTime previousRunDateTime;
 
     @Column(name = "next_run_datetime", nullable = true)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date nextRunDateTime;
+    private LocalDateTime nextRunDateTime;
 
     @Column(name = "previous_run_status", nullable = true)
     private String previousRunStatus;
@@ -129,7 +122,7 @@ public class ReportMailingJob extends AbstractAuditableCustom {
         this.startDateTime = null;
 
         if (startDateTime != null) {
-            this.startDateTime = startDateTime.toDate();
+            this.startDateTime = startDateTime;
         }
 
         this.recurrence = recurrence;
@@ -142,13 +135,13 @@ public class ReportMailingJob extends AbstractAuditableCustom {
         this.previousRunDateTime = null;
 
         if (previousRunDateTime != null) {
-            this.previousRunDateTime = previousRunDateTime.toDate();
+            this.previousRunDateTime = previousRunDateTime;
         }
 
         this.nextRunDateTime = null;
 
         if (nextRunDateTime != null) {
-            this.nextRunDateTime = nextRunDateTime.toDate();
+            this.nextRunDateTime = nextRunDateTime;
         }
 
         this.previousRunStatus = null;
@@ -201,14 +194,14 @@ public class ReportMailingJob extends AbstractAuditableCustom {
                 .integerValueOfParameterNamed(ReportMailingJobConstants.EMAIL_ATTACHMENT_FILE_FORMAT_ID_PARAM_NAME);
         final ReportMailingJobEmailAttachmentFileFormat emailAttachmentFileFormat = ReportMailingJobEmailAttachmentFileFormat
                 .newInstance(emailAttachmentFileFormatId);
-        LocalDateTime startDateTime = new LocalDateTime();
+        LocalDateTime startDateTime = LocalDateTime.now(DateUtils.getDateTimeZoneOfTenant());
 
         if (jsonCommand.hasParameter(ReportMailingJobConstants.START_DATE_TIME_PARAM_NAME)) {
             final String startDateTimeString = jsonCommand
                     .stringValueOfParameterNamed(ReportMailingJobConstants.START_DATE_TIME_PARAM_NAME);
 
             if (startDateTimeString != null) {
-                final DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(jsonCommand.dateFormat())
+                final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(jsonCommand.dateFormat())
                         .withLocale(jsonCommand.extractLocale());
                 startDateTime = LocalDateTime.parse(startDateTimeString, dateTimeFormatter);
             }
@@ -304,15 +297,15 @@ public class ReportMailingJob extends AbstractAuditableCustom {
         final String newStartDateTimeString = jsonCommand.stringValueOfParameterNamed(ReportMailingJobConstants.START_DATE_TIME_PARAM_NAME);
 
         if (!StringUtils.isEmpty(newStartDateTimeString)) {
-            final DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern(jsonCommand.dateFormat())
+            final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(jsonCommand.dateFormat())
                     .withLocale(jsonCommand.extractLocale());
             final LocalDateTime newStartDateTime = LocalDateTime.parse(newStartDateTimeString, dateTimeFormatter);
-            final LocalDateTime oldStartDateTime = (this.startDateTime != null) ? new LocalDateTime(this.startDateTime) : null;
+            final LocalDateTime oldStartDateTime = this.startDateTime;
 
             if ((oldStartDateTime != null) && !newStartDateTime.equals(oldStartDateTime)) {
                 actualChanges.put(ReportMailingJobConstants.START_DATE_TIME_PARAM_NAME, newStartDateTimeString);
 
-                this.startDateTime = newStartDateTime.toDate();
+                this.startDateTime = newStartDateTime;
             }
         }
 
@@ -372,8 +365,8 @@ public class ReportMailingJob extends AbstractAuditableCustom {
     /**
      * @return the value of the startDateTime property
      **/
-    public DateTime getStartDateTime() {
-        return (this.startDateTime != null) ? new DateTime(this.startDateTime) : null;
+    public LocalDateTime getStartDateTime() {
+        return this.startDateTime;
     }
 
     /**
@@ -456,15 +449,15 @@ public class ReportMailingJob extends AbstractAuditableCustom {
     /**
      * @return the previousRunDateTime
      */
-    public DateTime getPreviousRunDateTime() {
-        return (this.previousRunDateTime != null) ? new DateTime(this.previousRunDateTime) : null;
+    public LocalDateTime getPreviousRunDateTime() {
+        return this.previousRunDateTime;
     }
 
     /**
      * @return the nextRunDateTime
      */
-    public DateTime getNextRunDateTime() {
-        return (this.nextRunDateTime != null) ? new DateTime(this.nextRunDateTime) : null;
+    public LocalDateTime getNextRunDateTime() {
+        return this.nextRunDateTime;
     }
 
     /**
@@ -531,9 +524,9 @@ public class ReportMailingJob extends AbstractAuditableCustom {
      *            -- previous run date
      *
      **/
-    public void updatePreviousRunDateTime(final DateTime previousRunDateTime) {
+    public void updatePreviousRunDateTime(final LocalDateTime previousRunDateTime) {
         if (previousRunDateTime != null) {
-            this.previousRunDateTime = previousRunDateTime.toDate();
+            this.previousRunDateTime = previousRunDateTime;
         }
     }
 
@@ -544,9 +537,9 @@ public class ReportMailingJob extends AbstractAuditableCustom {
      *            -- the next run DateTime
      *
      **/
-    public void updateNextRunDateTime(final DateTime nextRunDateTime) {
+    public void updateNextRunDateTime(final LocalDateTime nextRunDateTime) {
         if (nextRunDateTime != null) {
-            this.nextRunDateTime = nextRunDateTime.toDate();
+            this.nextRunDateTime = nextRunDateTime;
         }
 
         else {

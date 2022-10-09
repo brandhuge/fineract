@@ -133,6 +133,8 @@ final class LoanTransactionsApiResourceSwagger {
         public GetLoansType type;
         @Schema(example = "[2012, 5, 14]")
         public LocalDate date;
+        @Schema(example = "[2012, 5, 14]")
+        public LocalDate submittedOnDate;
         @Schema(example = "false")
         public Boolean manuallyReversed;
         public GetLoansCurrency currency;
@@ -140,12 +142,42 @@ final class LoanTransactionsApiResourceSwagger {
         public Double amount;
         @Schema(example = "559.88")
         public Double interestPortion;
+        @Schema(example = "20120514")
+        public String reversalExternalId;
+        @Schema(example = "[2012, 5, 18]")
+        public LocalDate reversedOnDate;
     }
 
     @Schema(description = "PostLoansLoanIdTransactionsRequest")
     public static final class PostLoansLoanIdTransactionsRequest {
 
         private PostLoansLoanIdTransactionsRequest() {}
+
+        @Schema(example = "en_GB")
+        public String locale;
+        @Schema(example = "dd MMMM yyyy")
+        public String dateFormat;
+        @Schema(example = "28 June 2022")
+        public String transactionDate;
+        @Schema(example = "50000.00")
+        public Double transactionAmount;
+        @Schema(example = "An optional note about why your adjusting or changing the transaction.")
+        public String note;
+        @Schema(example = "3e7791ce-aa10-11ec-b909-0242ac120002")
+        public String externalId;
+        @Schema(example = "3")
+        public Integer paymentTypeId;
+        @Schema(example = "acc123")
+        public String accountNumber;
+        @Schema(example = "che123")
+        public String checkNumber;
+        @Schema(example = "rou123")
+        public String routingCode;
+        @Schema(example = "rec123")
+        public String receiptNumber;
+        @Schema(example = "ban123")
+        public String bankNumber;
+
     }
 
     @Schema(description = "PostLoansLoanIdTransactionsResponse")
@@ -170,12 +202,14 @@ final class LoanTransactionsApiResourceSwagger {
         public String locale;
         @Schema(example = "dd MMMM yyyy")
         public String dateFormat;
-        @Schema(example = "25 May 2012")
+        @Schema(example = "28 June 2022")
         public String transactionDate;
         @Schema(example = "50,000.00")
         public Double transactionAmount;
         @Schema(example = "An optional note about why your adjusting or changing the transaction.")
         public String note;
+        @Schema(example = "95174ff9-1a75-4d72-a413-6f9b1cb988b7")
+        public String reversalExternalId;
     }
 
     @Schema(description = "PostLoansLoanIdTransactionsTransactionIdResponse")
@@ -185,5 +219,37 @@ final class LoanTransactionsApiResourceSwagger {
 
         @Schema(example = "16")
         public Integer resourceId;
+    }
+
+    @Schema(description = "PutChargeTransactionChangesResponse")
+    public static final class PutChargeTransactionChangesResponse {
+
+        private PutChargeTransactionChangesResponse() {}
+
+        static final class Changes {
+
+            private Changes() {}
+
+            @Schema(example = "amount")
+            public String amount;
+        }
+
+        @Schema(example = "1")
+        public Integer resourceId;
+        @Schema(example = "48")
+        public Integer loanId;
+        public PutChargeTransactionChangesResponse.Changes changes;
+
+    }
+
+    @Schema(description = "PutChargeTransactionChangesRequest")
+    public static final class PutChargeTransactionChangesRequest {
+
+        private PutChargeTransactionChangesRequest() {}
+
+        @Schema(example = "1")
+        public Integer id;
+        @Schema(example = "2")
+        public Integer loanId;
     }
 }

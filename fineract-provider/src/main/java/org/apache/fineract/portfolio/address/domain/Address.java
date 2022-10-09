@@ -20,8 +20,8 @@ package org.apache.fineract.portfolio.address.domain;
 
 import com.google.gson.JsonObject;
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Locale;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -34,9 +34,6 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.portfolio.client.domain.ClientAddress;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "m_address")
@@ -92,13 +89,13 @@ public class Address extends AbstractPersistableCustom {
     private String createdBy;
 
     @Column(name = "created_on")
-    private Date createdOn;
+    private LocalDate createdOn;
 
     @Column(name = "updated_by")
     private String updatedBy;
 
     @Column(name = "updated_on")
-    private Date updatedOn;
+    private LocalDate updatedOn;
 
     private Address(final String street, final String addressLine1, final String addressLine2, final String addressLine3,
             final String townVillage, final String city, final String countyDistrict, final CodeValue stateProvince,
@@ -122,12 +119,12 @@ public class Address extends AbstractPersistableCustom {
         // this.updatedOn = updatedOn;
 
         if (createdOn != null) {
-            this.createdOn = createdOn.toDate();
+            this.createdOn = createdOn;
 
         }
 
         if (updatedOn != null) {
-            this.updatedOn = updatedOn.toDate();
+            this.updatedOn = updatedOn;
         }
 
     }
@@ -182,14 +179,12 @@ public class Address extends AbstractPersistableCustom {
         BigDecimal latitude = BigDecimal.ZERO;
         BigDecimal longitude = BigDecimal.ZERO;
         String createdBy = "";
-        Locale locale = Locale.ENGLISH;
         String updatedBy = "";
         LocalDate updatedOnDate = null;
         LocalDate createdOnDate = null;
 
         if (jsonObject.has("street")) {
             street = jsonObject.get("street").getAsString();
-
         }
 
         if (jsonObject.has("addressLine1")) {
@@ -229,7 +224,7 @@ public class Address extends AbstractPersistableCustom {
         }
         if (jsonObject.has("createdOn")) {
             String createdOn = jsonObject.get("createdOn").getAsString();
-            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             createdOnDate = LocalDate.parse(createdOn, formatter);
 
         }
@@ -238,7 +233,7 @@ public class Address extends AbstractPersistableCustom {
         }
         if (jsonObject.has("updatedOn")) {
             String updatedOn = jsonObject.get("updatedOn").getAsString();
-            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             updatedOnDate = LocalDate.parse(updatedOn, formatter);
         }
 
@@ -358,12 +353,12 @@ public class Address extends AbstractPersistableCustom {
         this.createdBy = createdBy;
     }
 
-    public Date getCreatedOn() {
+    public LocalDate getCreatedOn() {
         return this.createdOn;
     }
 
     public void setCreatedOn(LocalDate createdOn) {
-        this.createdOn = createdOn.toDate();
+        this.createdOn = createdOn;
     }
 
     public String getUpdatedBy() {
@@ -374,12 +369,12 @@ public class Address extends AbstractPersistableCustom {
         this.updatedBy = updatedBy;
     }
 
-    public Date getUpdatedOn() {
+    public LocalDate getUpdatedOn() {
         return this.updatedOn;
     }
 
     public void setUpdatedOn(LocalDate updatedOn) {
-        this.updatedOn = updatedOn.toDate();
+        this.updatedOn = updatedOn;
     }
 
 }

@@ -21,11 +21,14 @@ package org.apache.fineract.portfolio.address.service;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepository;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.address.domain.Address;
 import org.apache.fineract.portfolio.address.domain.AddressRepository;
@@ -36,11 +39,10 @@ import org.apache.fineract.portfolio.client.domain.ClientAddress;
 import org.apache.fineract.portfolio.client.domain.ClientAddressRepository;
 import org.apache.fineract.portfolio.client.domain.ClientAddressRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.joda.time.LocalDate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AddressWritePlatformServiceImpl implements AddressWritePlatformService {
 
     private final PlatformSecurityContext context;
@@ -51,112 +53,77 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
     private final ClientAddressRepositoryWrapper clientAddressRepositoryWrapper;
     private final AddressCommandFromApiJsonDeserializer fromApiJsonDeserializer;
 
-    @Autowired
-    public AddressWritePlatformServiceImpl(final PlatformSecurityContext context, final CodeValueRepository codeValueRepository,
-            final ClientAddressRepository clientAddressRepository, final ClientRepositoryWrapper clientRepositoryWrapper,
-            final AddressRepository addressRepository, final ClientAddressRepositoryWrapper clientAddressRepositoryWrapper,
-            final AddressCommandFromApiJsonDeserializer fromApiJsonDeserializer) {
-        this.context = context;
-        this.codeValueRepository = codeValueRepository;
-        this.clientAddressRepository = clientAddressRepository;
-        this.clientRepositoryWrapper = clientRepositoryWrapper;
-        this.addressRepository = addressRepository;
-        this.clientAddressRepositoryWrapper = clientAddressRepositoryWrapper;
-        this.fromApiJsonDeserializer = fromApiJsonDeserializer;
-
-    }
-
     @Override
     public CommandProcessingResult addClientAddress(final Long clientId, final Long addressTypeId, final JsonCommand command) {
-        CodeValue stateIdobj = null;
-        CodeValue countryIdObj = null;
-        long stateId;
-        long countryId;
+        JsonObject jsonObject = command.parsedJson().getAsJsonObject();
+        context.authenticatedUser();
+        fromApiJsonDeserializer.validateForCreate(jsonObject.toString(), false);
 
-        this.context.authenticatedUser();
-        this.fromApiJsonDeserializer.validateForCreate(command.json(), true);
+        final CodeValue addressTypeIdCodeValue = codeValueRepository.getReferenceById(addressTypeId);
+        final Client client = clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
 
-        if (command.longValueOfParameterNamed("stateProvinceId") != null) {
-            stateId = command.longValueOfParameterNamed("stateProvinceId");
-            stateIdobj = this.codeValueRepository.getOne(stateId);
-        }
+        final Address address = createAddress(jsonObject);
+        addressRepository.save(address);
 
-        if (command.longValueOfParameterNamed("countryId") != null) {
-            countryId = command.longValueOfParameterNamed("countryId");
-            countryIdObj = this.codeValueRepository.getOne(countryId);
-        }
+        final ClientAddress clientAddress = createClientAddress(client, jsonObject, addressTypeIdCodeValue, address);
+        clientAddressRepository.saveAndFlush(clientAddress);
 
-        final CodeValue addressTypeIdObj = this.codeValueRepository.getOne(addressTypeId);
-
-        final Address add = Address.fromJson(command, stateIdobj, countryIdObj);
-        add.setCreatedOn(LocalDate.now());
-        add.setUpdatedOn(LocalDate.now());
-        this.addressRepository.save(add);
-        final Long addressid = add.getId();
-        final Address addobj = this.addressRepository.getOne(addressid);
-
-        final Client client = this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
-        final boolean isActive = command.booleanPrimitiveValueOfParameterNamed("isActive");
-
-        final ClientAddress clientAddressobj = ClientAddress.fromJson(isActive, client, addobj, addressTypeIdObj);
-        this.clientAddressRepository.save(clientAddressobj);
-
-        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(clientAddressobj.getId()).build();
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(clientAddress.getId()).build();
     }
-
-    // following method is used for adding multiple addresses while creating new
-    // client
 
     @Override
     public CommandProcessingResult addNewClientAddress(final Client client, final JsonCommand command) {
-        CodeValue stateIdobj = null;
-        CodeValue countryIdObj = null;
-        long stateId;
-        long countryId;
-        ClientAddress clientAddressobj = new ClientAddress();
+        ClientAddress clientAddress = new ClientAddress();
         final JsonArray addressArray = command.arrayOfParameterNamed("address");
 
         if (addressArray != null) {
             for (int i = 0; i < addressArray.size(); i++) {
                 final JsonObject jsonObject = addressArray.get(i).getAsJsonObject();
 
-                // validate every address
-                this.fromApiJsonDeserializer.validateForCreate(jsonObject.toString(), true);
-
-                if (jsonObject.get("stateProvinceId") != null) {
-                    stateId = jsonObject.get("stateProvinceId").getAsLong();
-                    stateIdobj = this.codeValueRepository.getOne(stateId);
-                }
-
-                if (jsonObject.get("countryId") != null) {
-                    countryId = jsonObject.get("countryId").getAsLong();
-                    countryIdObj = this.codeValueRepository.getOne(countryId);
-                }
+                fromApiJsonDeserializer.validateForCreate(jsonObject.toString(), true);
 
                 final long addressTypeId = jsonObject.get("addressTypeId").getAsLong();
-                final CodeValue addressTypeIdObj = this.codeValueRepository.getOne(addressTypeId);
+                final CodeValue addressTypeIdCodeValue = codeValueRepository.getReferenceById(addressTypeId);
 
-                final Address add = Address.fromJsonObject(jsonObject, stateIdobj, countryIdObj);
-                add.setCreatedOn(LocalDate.now());
-                add.setUpdatedOn(LocalDate.now());
-                this.addressRepository.save(add);
-                final Long addressid = add.getId();
-                final Address addobj = this.addressRepository.getOne(addressid);
+                final Address address = createAddress(jsonObject);
+                addressRepository.save(address);
 
-                // final boolean isActive =
-                // jsonObject.get("isActive").getAsBoolean();
-                boolean isActive = false;
-                if (jsonObject.get("isActive") != null) {
-                    isActive = jsonObject.get("isActive").getAsBoolean();
-                }
-
-                clientAddressobj = ClientAddress.fromJson(isActive, client, addobj, addressTypeIdObj);
-                this.clientAddressRepository.save(clientAddressobj);
+                clientAddress = createClientAddress(client, jsonObject, addressTypeIdCodeValue, address);
+                clientAddressRepository.saveAndFlush(clientAddress);
 
             }
         }
 
-        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(clientAddressobj.getId()).build();
+        // This is confusing because only the last client address id is returned
+        // TODO: clean this up
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(clientAddress.getId()).build();
+    }
+
+    private ClientAddress createClientAddress(Client client, JsonObject jsonObject, CodeValue addressTypeIdCodeValue, Address address) {
+        boolean clientAddressIsActive = false;
+        if (jsonObject.get("isActive") != null) {
+            clientAddressIsActive = jsonObject.get("isActive").getAsBoolean();
+        }
+        return ClientAddress.fromJson(clientAddressIsActive, client, address, addressTypeIdCodeValue);
+    }
+
+    private Address createAddress(JsonObject jsonObject) {
+        CodeValue stateIdCodeValue = null;
+        if (jsonObject.get("stateProvinceId") != null) {
+            long stateId = jsonObject.get("stateProvinceId").getAsLong();
+            stateIdCodeValue = codeValueRepository.getReferenceById(stateId);
+        }
+
+        CodeValue countryIdCodeValue = null;
+        if (jsonObject.get("countryId") != null) {
+            long countryId = jsonObject.get("countryId").getAsLong();
+            countryIdCodeValue = codeValueRepository.getReferenceById(countryId);
+        }
+
+        final Address address = Address.fromJsonObject(jsonObject, stateIdCodeValue, countryIdCodeValue);
+        address.setCreatedOn(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
+        address.setUpdatedOn(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
+        return address;
     }
 
     @Override
@@ -183,7 +150,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
             throw new AddressNotFoundException(clientId);
         }
 
-        final Address addobj = this.addressRepository.getOne(addressId);
+        final Address addobj = this.addressRepository.getReferenceById(addressId);
 
         if (!command.stringValueOfParameterNamed("addressLine1").isEmpty()) {
 
@@ -231,7 +198,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
             if (command.longValueOfParameterNamed("stateProvinceId") != 0) {
                 is_address_update = true;
                 stateId = command.longValueOfParameterNamed("stateProvinceId");
-                stateIdobj = this.codeValueRepository.getOne(stateId);
+                stateIdobj = this.codeValueRepository.getReferenceById(stateId);
                 addobj.setStateProvince(stateIdobj);
             }
 
@@ -240,7 +207,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
             if (command.longValueOfParameterNamed("countryId") != 0) {
                 is_address_update = true;
                 countryId = command.longValueOfParameterNamed("countryId");
-                countryIdObj = this.codeValueRepository.getOne(countryId);
+                countryIdObj = this.codeValueRepository.getReferenceById(countryId);
                 addobj.setCountry(countryIdObj);
             }
 
@@ -267,7 +234,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
         }
 
         if (is_address_update) {
-            addobj.setUpdatedOn(LocalDate.now());
+            addobj.setUpdatedOn(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
             this.addressRepository.save(addobj);
 
         }

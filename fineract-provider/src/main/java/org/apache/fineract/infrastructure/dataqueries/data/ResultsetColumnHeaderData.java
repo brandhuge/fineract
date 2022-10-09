@@ -33,7 +33,6 @@ public final class ResultsetColumnHeaderData implements Serializable {
     private final Long columnLength;
     private final String columnDisplayType;
     private final boolean isColumnNullable;
-    @SuppressWarnings("unused")
     private final boolean isColumnPrimaryKey;
 
     private final List<ResultsetColumnValueData> columnValues;
@@ -76,6 +75,9 @@ public final class ResultsetColumnHeaderData implements Serializable {
             if (isString()) {
                 displayType = "STRING";
             } else if (isAnyInteger()) {
+                if (isInteger()) {
+                    this.columnType = this.columnType.toUpperCase();
+                }
                 displayType = "INTEGER";
             } else if (isDate()) {
                 displayType = "DATE";
@@ -93,7 +95,7 @@ public final class ResultsetColumnHeaderData implements Serializable {
             }
 
         } else {
-            if (isInt()) {
+            if (isInt() || isInteger()) {
                 displayType = "CODELOOKUP";
             } else if (isVarchar()) {
                 displayType = "CODEVALUE";
@@ -158,7 +160,8 @@ public final class ResultsetColumnHeaderData implements Serializable {
     }
 
     private boolean isDecimal() {
-        return "decimal".equalsIgnoreCase(this.columnType) || "NEWDECIMAL".equalsIgnoreCase(this.columnType);
+        return "decimal".equalsIgnoreCase(this.columnType) || "NEWDECIMAL".equalsIgnoreCase(this.columnType)
+                || "numeric".equalsIgnoreCase(this.columnType);
         // Refer org.drizzle.jdbc.internal.mysql.MySQLType.java
     }
 
@@ -167,7 +170,8 @@ public final class ResultsetColumnHeaderData implements Serializable {
     }
 
     private boolean isDateTime() {
-        return "datetime".equalsIgnoreCase(this.columnType);
+        return "datetime".equalsIgnoreCase(this.columnType) || "timestamp without time zone".equalsIgnoreCase(this.columnType)
+                || "timestamptz".equalsIgnoreCase(this.columnType) || "timestamp with time zone".equalsIgnoreCase(this.columnType);
     }
 
     public boolean isString() {
@@ -175,7 +179,8 @@ public final class ResultsetColumnHeaderData implements Serializable {
     }
 
     private boolean isChar() {
-        return "char".equalsIgnoreCase(this.columnType);
+        return "char".equalsIgnoreCase(this.columnType) || "CHARACTER VARYING".equalsIgnoreCase(this.columnType)
+                || "bpchar".equalsIgnoreCase(this.columnType);
     }
 
     private boolean isVarchar() {
@@ -183,11 +188,22 @@ public final class ResultsetColumnHeaderData implements Serializable {
     }
 
     private boolean isAnyInteger() {
-        return isInt() || isSmallInt() || isTinyInt() || isMediumInt() || isBigInt() || isLong();
+        return isInt() || isInteger() || isSmallInt() || isTinyInt() || isMediumInt() || isBigInt() || isLong() || isSerial();
+    }
+
+    private boolean isSerial() {
+        return "SERIAL".equalsIgnoreCase(this.columnType) || "SERIAL4".equalsIgnoreCase(this.columnType)
+                || "SERIAL8".equalsIgnoreCase(this.columnType) || "SMALLSERIAL".equalsIgnoreCase(this.columnType)
+                || "BIGSERIAL".equalsIgnoreCase(this.columnType);
     }
 
     private boolean isInt() {
         return "int".equalsIgnoreCase(this.columnType);
+    }
+
+    private boolean isInteger() {
+        return "integer".equalsIgnoreCase(this.columnType) || "int2".equalsIgnoreCase(this.columnType)
+                || "int4".equalsIgnoreCase(this.columnType);
     }
 
     private boolean isSmallInt() {
@@ -203,7 +219,7 @@ public final class ResultsetColumnHeaderData implements Serializable {
     }
 
     private boolean isBigInt() {
-        return "bigint".equalsIgnoreCase(this.columnType);
+        return "bigint".equalsIgnoreCase(this.columnType) || "int8".equalsIgnoreCase(this.columnType);
     }
 
     private boolean isLong() {
@@ -225,6 +241,14 @@ public final class ResultsetColumnHeaderData implements Serializable {
 
     public Long getColumnLength() {
         return this.columnLength;
+    }
+
+    public boolean getIsColumnNullable() {
+        return isColumnNullable;
+    }
+
+    public boolean getIsColumnPrimaryKey() {
+        return isColumnPrimaryKey;
     }
 
     public String getColumnDisplayType() {
@@ -301,5 +325,9 @@ public final class ResultsetColumnHeaderData implements Serializable {
 
     public String getColumnCode() {
         return this.columnCode;
+    }
+
+    public List<ResultsetColumnValueData> getColumnValues() {
+        return this.columnValues;
     }
 }

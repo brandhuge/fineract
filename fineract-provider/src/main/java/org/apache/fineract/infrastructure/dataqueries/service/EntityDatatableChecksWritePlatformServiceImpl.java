@@ -107,7 +107,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
             final String foreignKeyColumnName = EntityTables.getForeignKeyColumnNameOnDatatable(entity);
             final boolean columnExist = datatableData.hasColumn(foreignKeyColumnName);
 
-            LOG.info("{} has column {} ? {}", datatableData.getRegisteredTableName(), foreignKeyColumnName, columnExist);
+            LOG.debug("{} has column {} ? {}", datatableData.getRegisteredTableName(), foreignKeyColumnName, columnExist);
 
             if (!columnExist) {
                 throw new EntityDatatableCheckNotSupportedException(datatableData.getRegisteredTableName(), entity);
@@ -170,7 +170,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
                 final String datatableName = t.getDatatableName();
                 final Long countEntries = readWriteNonCoreDataService.countDatatableEntries(datatableName, entityId, foreignKeyColumn);
 
-                LOG.info("The are {} entries in the table {}", countEntries, datatableName);
+                LOG.debug("The are {} entries in the table {}", countEntries, datatableName);
                 if (countEntries.intValue() == 0) {
                     reqDatatables.add(datatableName);
                 }
@@ -182,6 +182,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
 
     }
 
+    @Transactional(readOnly = true)
     @Override
     public void runTheCheckForProduct(final Long entityId, final String entityName, final Long statusCode, String foreignKeyColumn,
             long productId) {
@@ -198,7 +199,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
                 final String datatableName = t.getDatatableName();
                 final Long countEntries = readWriteNonCoreDataService.countDatatableEntries(datatableName, entityId, foreignKeyColumn);
 
-                LOG.info("The are {} entries in the table {}", countEntries, datatableName);
+                LOG.debug("The are {} entries in the table {}", countEntries, datatableName);
                 if (countEntries.intValue() == 0) {
                     reqDatatables.add(datatableName);
                 }
@@ -266,7 +267,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
      */
     private void handleReportDataIntegrityIssues(final JsonCommand command, final Throwable realCause, final Exception dae) {
 
-        if (realCause.getMessage().contains("FOREIGN KEY (`x_registered_table_name`)")) {
+        if (realCause.getMessage().contains("FOREIGN KEY (x_registered_table_name)")) {
             final String datatableName = command.stringValueOfParameterNamed("datatableName");
             throw new PlatformDataIntegrityException("error.msg.entityDatatableCheck.foreign.key.constraint",
                     "datatable with name '" + datatableName + "' do not exist", "datatableName", datatableName);

@@ -29,9 +29,9 @@ import static org.apache.fineract.portfolio.meeting.MeetingApiConstants.meetingD
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Map;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -56,7 +56,6 @@ import org.apache.fineract.portfolio.meeting.data.MeetingDataValidator;
 import org.apache.fineract.portfolio.meeting.domain.Meeting;
 import org.apache.fineract.portfolio.meeting.domain.MeetingRepository;
 import org.apache.fineract.portfolio.meeting.domain.MeetingRepositoryWrapper;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -97,7 +96,7 @@ public class MeetingWritePlatformServiceJpaRepositoryImpl implements MeetingWrit
 
         this.meetingDataValidator.validateForCreate(command);
 
-        final Date meetingDate = command.dateValueOfParameterNamed(meetingDateParamName);
+        final LocalDate meetingDate = command.dateValueOfParameterNamed(meetingDateParamName);
         final Boolean isTransactionDateOnNonMeetingDate = false;
         /*
          * Boolean isSkipRepaymentOnFirstMonth = false; Integer numberOfDays = 0; boolean
@@ -129,7 +128,7 @@ public class MeetingWritePlatformServiceJpaRepositoryImpl implements MeetingWrit
                 newMeeting.associateClientsAttendance(clientsAttendance);
             }
             // save meeting details
-            this.meetingRepositoryWrapper.save(newMeeting);
+            this.meetingRepositoryWrapper.saveAndFlush(newMeeting);
             final Long groupId = newMeeting.isGroupEntity() ? newMeeting.entityId() : null;
             return new CommandProcessingResultBuilder() //
                     .withEntityId(newMeeting.getId()) //
@@ -163,7 +162,7 @@ public class MeetingWritePlatformServiceJpaRepositoryImpl implements MeetingWrit
             /*
              * If group is within a center then center entityType should be passed for retrieving CalendarInstance.
              */
-            final Group group = this.groupRepository.findById(entityId).get();
+            final Group group = this.groupRepository.findById(entityId).orElseThrow();
             if (group.isCenter()) {
                 entityType = CalendarEntityType.CENTERS;
             } else if (group.isChildGroup()) {
@@ -297,11 +296,10 @@ public class MeetingWritePlatformServiceJpaRepositoryImpl implements MeetingWrit
                 .build();
     }
 
-    private void handleMeetingDataIntegrityIssues(final Date meetingDate, final Throwable realCause, final Exception dve) {
+    private void handleMeetingDataIntegrityIssues(final LocalDate meetingDate, final Throwable realCause, final Exception dve) {
         if (realCause.getMessage().contains("unique_calendar_instance_id_meeting_date")) {
-            final LocalDate meetingDateLocal = LocalDate.fromDateFields(meetingDate);
             throw new PlatformDataIntegrityException("error.msg.meeting.duplicate",
-                    "A meeting with date '" + meetingDateLocal + "' already exists", meetingDateParamName, meetingDateLocal);
+                    "A meeting with date '" + meetingDate + "' already exists", meetingDateParamName, meetingDate);
         }
 
         throw new PlatformDataIntegrityException("error.msg.meeting.unknown.data.integrity.issue",
@@ -310,7 +308,7 @@ public class MeetingWritePlatformServiceJpaRepositoryImpl implements MeetingWrit
 
     @Override
     public void updateCollectionSheetAttendance(final JsonCommand command) {
-        final Date meetingDate = command.dateValueOfParameterNamed(transactionDateParamName);
+        final LocalDate meetingDate = command.dateValueOfParameterNamed(transactionDateParamName);
         final Boolean isTransactionDateOnNonMeetingDate = command
                 .booleanPrimitiveValueOfParameterNamed(isTransactionDateOnNonMeetingDateParamName);
 

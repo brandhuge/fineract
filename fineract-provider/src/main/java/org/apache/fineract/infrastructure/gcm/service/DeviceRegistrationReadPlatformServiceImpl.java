@@ -20,14 +20,13 @@ package org.apache.fineract.infrastructure.gcm.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.gcm.domain.DeviceRegistrationData;
 import org.apache.fineract.infrastructure.gcm.exception.DeviceRegistrationNotFoundException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.data.ClientData;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,9 +40,9 @@ public class DeviceRegistrationReadPlatformServiceImpl implements DeviceRegistra
     private final PlatformSecurityContext context;
 
     @Autowired
-    public DeviceRegistrationReadPlatformServiceImpl(final PlatformSecurityContext context, final RoutingDataSource dataSource) {
+    public DeviceRegistrationReadPlatformServiceImpl(final PlatformSecurityContext context, final JdbcTemplate jdbcTemplate) {
         this.context = context;
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     private static final class DeviceRegistrationDataMapper implements RowMapper<DeviceRegistrationData> {
@@ -67,12 +66,12 @@ public class DeviceRegistrationReadPlatformServiceImpl implements DeviceRegistra
         public DeviceRegistrationData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
 
             final Long id = JdbcSupport.getLong(rs, "id");
-            final LocalDate updatedOnDate = JdbcSupport.getLocalDate(rs, "updatedOnDate");
+            final OffsetDateTime updatedOnDate = JdbcSupport.getOffsetDateTime(rs, "updatedOnDate");
             final String registrationId = rs.getString("registrationId");
             final Long clientId = rs.getLong("clientId");
             final String clientName = rs.getString("clientName");
             ClientData clientData = ClientData.instance(clientId, clientName);
-            return DeviceRegistrationData.instance(id, clientData, registrationId, updatedOnDate.toDate());
+            return DeviceRegistrationData.instance(id, clientData, registrationId, updatedOnDate);
         }
     }
 
@@ -81,7 +80,7 @@ public class DeviceRegistrationReadPlatformServiceImpl implements DeviceRegistra
         this.context.authenticatedUser();
         DeviceRegistrationDataMapper drm = new DeviceRegistrationDataMapper();
         String sql = "select " + drm.schema();
-        return this.jdbcTemplate.query(sql, drm, new Object[] {});
+        return this.jdbcTemplate.query(sql, drm); // NOSONAR
     }
 
     @Override
@@ -90,7 +89,7 @@ public class DeviceRegistrationReadPlatformServiceImpl implements DeviceRegistra
             this.context.authenticatedUser();
             DeviceRegistrationDataMapper drm = new DeviceRegistrationDataMapper();
             String sql = "select " + drm.schema() + " where cdr.id = ? ";
-            return this.jdbcTemplate.queryForObject(sql, drm, new Object[] { id });
+            return this.jdbcTemplate.queryForObject(sql, drm, id); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new DeviceRegistrationNotFoundException(id, e);
         }
@@ -102,7 +101,7 @@ public class DeviceRegistrationReadPlatformServiceImpl implements DeviceRegistra
             this.context.authenticatedUser();
             DeviceRegistrationDataMapper drm = new DeviceRegistrationDataMapper();
             String sql = "select " + drm.schema() + " where c.id = ? ";
-            return this.jdbcTemplate.queryForObject(sql, drm, new Object[] { clientId });
+            return this.jdbcTemplate.queryForObject(sql, drm, clientId); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new DeviceRegistrationNotFoundException(clientId, "client", e);
         }

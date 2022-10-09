@@ -23,6 +23,7 @@ import java.math.RoundingMode;
 import java.util.Iterator;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
 
 @Embeddable
 public class Money implements Comparable<Money> {
@@ -67,8 +68,16 @@ public class Money implements Comparable<Money> {
                 currency.getCurrencyInMultiplesOf());
     }
 
+    public static Money of(final CurrencyData currency, final BigDecimal newAmount) {
+        return new Money(currency.getCode(), currency.getDecimalPlaces(), defaultToZeroIfNull(newAmount), currency.getInMultiplesOf());
+    }
+
     public static Money zero(final MonetaryCurrency currency) {
         return new Money(currency.getCode(), currency.getDigitsAfterDecimal(), BigDecimal.ZERO, currency.getCurrencyInMultiplesOf());
+    }
+
+    public static Money zero(final CurrencyData currency) {
+        return new Money(currency.getCode(), currency.getDecimalPlaces(), BigDecimal.ZERO, currency.getInMultiplesOf());
     }
 
     protected Money() {
@@ -180,6 +189,19 @@ public class Money implements Comparable<Money> {
     public Money minus(final Money moneyToSubtract) {
         final Money toSubtract = checkCurrencyEqual(moneyToSubtract);
         return this.minus(toSubtract.getAmount());
+    }
+
+    public Money add(final Money moneyToAdd) {
+        final Money toAdd = checkCurrencyEqual(moneyToAdd);
+        return this.add(toAdd.getAmount());
+    }
+
+    public Money add(final BigDecimal amountToAdd) {
+        if (amountToAdd == null || amountToAdd.compareTo(BigDecimal.ZERO) == 0) {
+            return this;
+        }
+        final BigDecimal newAmount = this.amount.add(amountToAdd);
+        return Money.of(monetaryCurrency(), newAmount);
     }
 
     public Money minus(final BigDecimal amountToSubtract) {

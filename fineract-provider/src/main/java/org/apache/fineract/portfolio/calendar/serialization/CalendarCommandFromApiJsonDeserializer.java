@@ -21,6 +21,8 @@ package org.apache.fineract.portfolio.calendar.serialization;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +41,6 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarFrequencyType;
 import org.apache.fineract.portfolio.calendar.domain.CalendarRemindBy;
 import org.apache.fineract.portfolio.calendar.domain.CalendarWeekDaysType;
 import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -203,8 +203,8 @@ public class CalendarCommandFromApiJsonDeserializer extends AbstractFromApiJsonD
                     .integerGreaterThanZero();
         }
         if (this.fromApiJsonHelper.parameterExists(CalendarSupportedParameters.MEETING_TIME.getValue(), element)) {
-            final LocalDateTime meetingTime = this.fromApiJsonHelper
-                    .extractLocalTimeNamed(CalendarSupportedParameters.MEETING_TIME.getValue(), element);
+            final LocalTime meetingTime = this.fromApiJsonHelper.extractLocalTimeNamed(CalendarSupportedParameters.MEETING_TIME.getValue(),
+                    element);
             baseDataValidator.reset().parameter(CalendarSupportedParameters.MEETING_TIME.getValue()).value(meetingTime).ignoreIfNull();
         }
 
@@ -347,9 +347,9 @@ public class CalendarCommandFromApiJsonDeserializer extends AbstractFromApiJsonD
                     .ignoreIfNull();
         }
         if (this.fromApiJsonHelper.parameterExists(CalendarSupportedParameters.MEETING_TIME.getValue(), element)) {
-            final LocalDateTime startDate = this.fromApiJsonHelper
-                    .extractLocalTimeNamed(CalendarSupportedParameters.MEETING_TIME.getValue(), element);
-            baseDataValidator.reset().parameter(CalendarSupportedParameters.MEETING_TIME.getValue()).value(startDate).ignoreIfNull();
+            final LocalTime meetingTime = this.fromApiJsonHelper.extractLocalTimeNamed(CalendarSupportedParameters.MEETING_TIME.getValue(),
+                    element);
+            baseDataValidator.reset().parameter(CalendarSupportedParameters.MEETING_TIME.getValue()).value(meetingTime).ignoreIfNull();
         }
 
         if (!dataValidationErrors.isEmpty()) {

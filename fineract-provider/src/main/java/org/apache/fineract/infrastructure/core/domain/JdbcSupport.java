@@ -18,16 +18,16 @@
  */
 package org.apache.fineract.infrastructure.core.domain;
 
-import static org.apache.fineract.infrastructure.core.service.DateUtils.getDateTimeZoneOfTenant;
-
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.Date;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.springframework.jdbc.support.JdbcUtils;
 
 /**
@@ -36,24 +36,13 @@ import org.springframework.jdbc.support.JdbcUtils;
  */
 public final class JdbcSupport {
 
-    private JdbcSupport() {
+    private JdbcSupport() {}
 
-    }
-
-    public static DateTime getDateTime(final ResultSet rs, final String columnName) throws SQLException {
-        DateTime dateTime = null;
+    public static ZonedDateTime getDateTime(final ResultSet rs, final String columnName) throws SQLException {
+        ZonedDateTime dateTime = null;
         final Timestamp dateValue = rs.getTimestamp(columnName);
         if (dateValue != null) {
-            dateTime = new DateTime(dateValue.getTime());
-        }
-        return dateTime;
-    }
-
-    public static DateTime getLocalDateTime(final ResultSet rs, final String columnName) throws SQLException {
-        DateTime dateTime = null;
-        final Timestamp dateValue = rs.getTimestamp(columnName);
-        if (dateValue != null) {
-            dateTime = new DateTime(dateValue.getTime()).withZone(getDateTimeZoneOfTenant());
+            dateTime = ZonedDateTime.of(dateValue.toLocalDateTime(), DateUtils.getDateTimeZoneOfTenant());
         }
         return dateTime;
     }
@@ -62,16 +51,16 @@ public final class JdbcSupport {
         LocalDate localDate = null;
         final Date dateValue = rs.getDate(columnName);
         if (dateValue != null) {
-            localDate = new LocalDate(dateValue);
+            localDate = dateValue.toLocalDate();
         }
         return localDate;
     }
 
     public static LocalTime getLocalTime(final ResultSet rs, final String columnName) throws SQLException {
         LocalTime localTime = null;
-        final Date timeValue = rs.getTime(columnName);
+        final Timestamp timeValue = rs.getTimestamp(columnName);
         if (timeValue != null) {
-            localTime = new LocalTime(timeValue);
+            localTime = timeValue.toLocalDateTime().toLocalTime();
         }
         return localTime;
     }
@@ -134,5 +123,16 @@ public final class JdbcSupport {
             result = null;
         }
         return result;
+    }
+
+    public static OffsetDateTime getOffsetDateTime(ResultSet rs, String columnName) throws SQLException {
+        final Timestamp timestamp = rs.getTimestamp(columnName);
+        if (timestamp != null) {
+            OffsetDateTime offsetDateTimeAtUTC = OffsetDateTime.of(timestamp.toLocalDateTime(),
+                    DateUtils.getSystemZoneId().getRules().getOffset(timestamp.toLocalDateTime()));
+            return offsetDateTimeAtUTC
+                    .withOffsetSameInstant(DateUtils.getDateTimeZoneOfTenant().getRules().getOffset(offsetDateTimeAtUTC.toInstant()));
+        }
+        return null;
     }
 }

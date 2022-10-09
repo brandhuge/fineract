@@ -18,9 +18,10 @@
  */
 package org.apache.fineract.useradministration.domain;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,9 +37,8 @@ import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
@@ -51,8 +51,6 @@ import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.useradministration.service.AppUserConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -60,8 +58,6 @@ import org.springframework.security.core.userdetails.User;
 @Entity
 @Table(name = "m_appuser", uniqueConstraints = @UniqueConstraint(columnNames = { "username" }, name = "username_org"))
 public class AppUser extends AbstractPersistableCustom implements PlatformUser {
-
-    private static final Logger LOG = LoggerFactory.getLogger(AppUser.class);
 
     @Column(name = "email", nullable = false, length = 100)
     private String email;
@@ -109,8 +105,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
     private Set<Role> roles;
 
     @Column(name = "last_time_password_updated")
-    @Temporal(TemporalType.DATE)
-    private Date lastTimePasswordUpdated;
+    private LocalDate lastTimePasswordUpdated;
 
     @Column(name = "password_never_expires", nullable = false)
     private boolean passwordNeverExpires;
@@ -118,9 +113,11 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
     @Column(name = "is_self_service_user", nullable = false)
     private boolean isSelfServiceUser;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @JoinColumn(name = "appuser_id", referencedColumnName = "id", nullable = false)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER, mappedBy = "appUser")
     private Set<AppUserClientMapping> appUserClientMappings = new HashSet<>();
+
+    @Column(name = "cannot_change_password", nullable = true)
+    private Boolean cannotChangePassword;
 
     public static AppUser fromJson(final Office userOffice, final Staff linkedStaff, final Set<Role> allRoles,
             final Collection<Client> clients, final JsonCommand command) {
@@ -143,6 +140,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         final boolean userAccountNonExpired = true;
         final boolean userCredentialsNonExpired = true;
         final boolean userAccountNonLocked = true;
+        final boolean cannotChangePassword = false;
 
         final Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("DUMMY_ROLE_NOT_USED_OR_PERSISTED_TO_AVOID_EXCEPTION"));
@@ -157,7 +155,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         final boolean isSelfServiceUser = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_SELF_SERVICE_USER);
 
         return new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire, isSelfServiceUser,
-                clients);
+                clients, cannotChangePassword);
     }
 
     protected AppUser() {
@@ -168,7 +166,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
 
     public AppUser(final Office office, final User user, final Set<Role> roles, final String email, final String firstname,
             final String lastname, final Staff staff, final boolean passwordNeverExpire, final boolean isSelfServiceUser,
-            final Collection<Client> clients) {
+            final Collection<Client> clients, final Boolean cannotChangePassword) {
         this.office = office;
         this.email = email.trim();
         this.username = user.getUsername().trim();
@@ -181,11 +179,12 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         this.enabled = user.isEnabled();
         this.roles = roles;
         this.firstTimeLoginRemaining = true;
-        this.lastTimePasswordUpdated = DateUtils.getDateOfTenant();
+        this.lastTimePasswordUpdated = DateUtils.getLocalDateOfTenant();
         this.staff = staff;
         this.passwordNeverExpires = passwordNeverExpire;
         this.isSelfServiceUser = isSelfServiceUser;
         this.appUserClientMappings = createAppUserClientMappings(clients);
+        this.cannotChangePassword = cannotChangePassword;
     }
 
     public EnumOptionData organisationalRoleData() {
@@ -197,9 +196,13 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
     }
 
     public void updatePassword(final String encodePassword) {
+        if (cannotChangePassword != null && cannotChangePassword == true) {
+            throw new NoAuthorizationException("Password of this user may not be modified");
+        }
+
         this.password = encodePassword;
         this.firstTimeLoginRemaining = false;
-        this.lastTimePasswordUpdated = DateUtils.getDateOfTenant();
+        this.lastTimePasswordUpdated = DateUtils.getBusinessLocalDate();
 
     }
 
@@ -400,6 +403,17 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         return this.username;
     }
 
+    public String getDisplayName() {
+        if (this.staff != null && StringUtils.isNotBlank(this.staff.displayName())) {
+            return this.staff.displayName();
+        }
+        String firstName = StringUtils.isNotBlank(this.firstname) ? this.firstname : "";
+        if (StringUtils.isNotBlank(this.lastname)) {
+            return firstName + " " + this.lastname;
+        }
+        return firstName;
+    }
+
     @Override
     public boolean isAccountNonExpired() {
         return this.accountNonExpired;
@@ -448,7 +462,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         return this.passwordNeverExpires;
     }
 
-    public Date getLastTimePasswordUpdated() {
+    public LocalDate getLastTimePasswordUpdated() {
         return this.lastTimePasswordUpdated;
     }
 
@@ -532,9 +546,24 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
     }
 
     public void validateHasReadPermission(final String resourceType) {
+        validateHasPermission("READ", resourceType);
+    }
 
-        final String authorizationMessage = "User has no authority to view " + resourceType.toLowerCase() + "s";
-        final String matchPermission = "READ_" + resourceType.toUpperCase();
+    public void validateHasCreatePermission(final String resourceType) {
+        validateHasPermission("CREATE", resourceType);
+    }
+
+    public void validateHasUpdatePermission(final String resourceType) {
+        validateHasPermission("UPDATE", resourceType);
+    }
+
+    public void validateHasDeletePermission(final String resourceType) {
+        validateHasPermission("DELETE", resourceType);
+    }
+
+    private void validateHasPermission(final String prefix, final String resourceType) {
+        final String authorizationMessage = "User has no authority to " + prefix + " " + resourceType.toLowerCase() + "s";
+        final String matchPermission = prefix + "_" + resourceType.toUpperCase();
 
         if (!hasNotPermissionForAnyOf("ALL_FUNCTIONS", "ALL_FUNCTIONS_READ", matchPermission)) {
             return;
@@ -579,7 +608,11 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         return !hasAnyPermission(permissions);
     }
 
-    private boolean hasAnyPermission(final List<String> permissions) {
+    public boolean hasAnyPermission(String... permissions) {
+        return hasAnyPermission(Arrays.asList(permissions));
+    }
+
+    public boolean hasAnyPermission(final List<String> permissions) {
         boolean hasAtLeastOneOf = false;
 
         for (final String permissionCode : permissions) {
@@ -602,16 +635,12 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
     public void validateHasPermissionTo(final String function) {
         if (hasNotPermissionTo(function)) {
             final String authorizationMessage = "User has no authority to: " + function;
-            LOG.info("Unauthorized access: userId: {} action: {} allowed: {}", getId(), function, getAuthorities());
             throw new NoAuthorizationException(authorizationMessage);
         }
     }
 
     public void validateHasReadPermission(final String function, final Long userId) {
-        if ("USER".equalsIgnoreCase(function) && userId.equals(getId())) {
-            // abstain from validation as user allowed fetch their own data no
-            // matter what permissions they have.
-        } else {
+        if (!("USER".equalsIgnoreCase(function) && userId.equals(getId()))) {
             validateHasReadPermission(function);
         }
     }
@@ -685,7 +714,7 @@ public class AppUser extends AbstractPersistableCustom implements PlatformUser {
         if (clients != null && clients.size() > 0) {
             newAppUserClientMappings = new HashSet<>();
             for (Client client : clients) {
-                newAppUserClientMappings.add(new AppUserClientMapping(client));
+                newAppUserClientMappings.add(new AppUserClientMapping(this, client));
             }
         }
         return newAppUserClientMappings;

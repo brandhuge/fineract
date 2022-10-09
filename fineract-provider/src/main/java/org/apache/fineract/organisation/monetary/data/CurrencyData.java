@@ -19,11 +19,14 @@
 package org.apache.fineract.organisation.monetary.data;
 
 import java.io.Serializable;
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 /**
  * Immutable data object representing currency.
  */
+@Getter
+@EqualsAndHashCode
 public class CurrencyData implements Serializable {
 
     private final String code;
@@ -31,9 +34,7 @@ public class CurrencyData implements Serializable {
     private final int decimalPlaces;
     private final Integer inMultiplesOf;
     private final String displaySymbol;
-    @SuppressWarnings("unused")
     private final String nameCode;
-    @SuppressWarnings("unused")
     private final String displayLabel;
 
     public static CurrencyData blank() {
@@ -61,16 +62,14 @@ public class CurrencyData implements Serializable {
         this.displayLabel = generateDisplayLabel();
     }
 
-    public String code() {
-        return this.code;
-    }
-
-    public int decimalPlaces() {
-        return this.decimalPlaces;
-    }
-
-    public Integer currencyInMultiplesOf() {
-        return this.inMultiplesOf;
+    public CurrencyData(final String code, final int decimalPlaces, final Integer inMultiplesOf) {
+        this.code = code;
+        this.name = null;
+        this.decimalPlaces = decimalPlaces;
+        this.inMultiplesOf = inMultiplesOf;
+        this.displaySymbol = null;
+        this.nameCode = null;
+        this.displayLabel = null;
     }
 
     private String generateDisplayLabel() {
@@ -84,28 +83,5 @@ public class CurrencyData implements Serializable {
         }
 
         return builder.toString();
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof CurrencyData)) {
-            return false;
-        }
-        CurrencyData that = (CurrencyData) o;
-        return Objects.equals(decimalPlaces, that.decimalPlaces) && Objects.equals(code, that.code) && Objects.equals(name, that.name)
-                && Objects.equals(inMultiplesOf, that.inMultiplesOf) && Objects.equals(displaySymbol, that.displaySymbol)
-                && Objects.equals(nameCode, that.nameCode) && Objects.equals(displayLabel, that.displayLabel);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(code, name, decimalPlaces, inMultiplesOf, displaySymbol, nameCode, displayLabel);
     }
 }

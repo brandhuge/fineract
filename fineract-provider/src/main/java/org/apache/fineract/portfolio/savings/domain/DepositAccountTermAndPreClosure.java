@@ -29,7 +29,8 @@ import static org.apache.fineract.portfolio.savings.DepositsApiConstants.transfe
 import static org.apache.fineract.portfolio.savings.DepositsApiConstants.transferToSavingsIdParamName;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.persistence.Column;
@@ -38,19 +39,12 @@ import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.portfolio.savings.DepositAccountOnClosureType;
 import org.apache.fineract.portfolio.savings.SavingsPeriodFrequencyType;
 import org.apache.fineract.portfolio.savings.service.SavingsEnumerations;
-import org.joda.time.Days;
-import org.joda.time.LocalDate;
-import org.joda.time.Months;
-import org.joda.time.Weeks;
-import org.joda.time.Years;
 
 @Entity
 @Table(name = "m_deposit_account_term_and_preclosure")
@@ -62,13 +56,11 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
     @Column(name = "maturity_amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal maturityAmount;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "maturity_date", nullable = true)
-    private Date maturityDate;
+    private LocalDate maturityDate;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "expected_firstdepositon_date")
-    private Date expectedFirstDepositOnDate;
+    private LocalDate expectedFirstDepositOnDate;
 
     @Column(name = "deposit_period", nullable = true)
     private Integer depositPeriod;
@@ -115,13 +107,13 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
             final DepositAccountOnClosureType accountOnClosureType, Boolean transferInterest, Long transferToSavingsId) {
         this.depositAmount = depositAmount;
         this.maturityAmount = maturityAmount;
-        this.maturityDate = (maturityDate == null) ? null : maturityDate.toDate();
+        this.maturityDate = maturityDate;
         this.depositPeriod = depositPeriod;
         this.depositPeriodFrequency = (depositPeriodFrequency == null) ? null : depositPeriodFrequency.getValue();
         this.preClosureDetail = preClosureDetail;
         this.depositTermDetail = depositTermDetail;
         this.account = account;
-        this.expectedFirstDepositOnDate = expectedFirstDepositOnDate == null ? null : expectedFirstDepositOnDate.toDate();
+        this.expectedFirstDepositOnDate = expectedFirstDepositOnDate;
         this.onAccountClosureType = (accountOnClosureType == null) ? null : accountOnClosureType.getValue();
         this.transferInterestToLinkedAccount = transferInterest;
         this.transferToSavingsAccountId = transferToSavingsId;
@@ -151,12 +143,11 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
         final String localeAsInput = command.locale();
         final String dateFormat = command.dateFormat();
         if (command.isChangeInLocalDateParameterNamed(expectedFirstDepositOnDateParamName, this.getExpectedFirstDepositOnDate())) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(expectedFirstDepositOnDateParamName);
             final String newValueAsString = command.stringValueOfParameterNamed(expectedFirstDepositOnDateParamName);
             actualChanges.put(expectedFirstDepositOnDateParamName, newValueAsString);
             actualChanges.put(localeParamName, localeAsInput);
             actualChanges.put(dateFormatParamName, dateFormat);
-            this.expectedFirstDepositOnDate = newValue.toDate();
+            this.expectedFirstDepositOnDate = command.localDateValueOfParameterNamed(expectedFirstDepositOnDateParamName);
         }
 
         if (command.isChangeInBooleanParameterNamed(transferInterestToSavingsParamName, this.transferInterestToLinkedAccount)) {
@@ -219,13 +210,13 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
 
     public void updateMaturityDetails(final BigDecimal maturityAmount, final LocalDate maturityDate) {
         this.maturityAmount = maturityAmount;
-        this.maturityDate = maturityDate.toDate();
+        this.maturityDate = maturityDate;
     }
 
     public void updateMaturityDetails(final BigDecimal depositAmount, final BigDecimal interestPayable, final LocalDate maturityDate) {
         this.depositAmount = depositAmount;
         this.maturityAmount = this.depositAmount.add(interestPayable);
-        this.maturityDate = maturityDate.toDate();
+        this.maturityDate = maturityDate;
     }
 
     public void updateDepositAmount(final BigDecimal depositAmount) {
@@ -233,19 +224,11 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
     }
 
     public LocalDate getMaturityLocalDate() {
-        LocalDate maturityLocalDate = null;
-        if (this.maturityDate != null) {
-            maturityLocalDate = new LocalDate(this.maturityDate);
-        }
-        return maturityLocalDate;
+        return this.maturityDate;
     }
 
     public LocalDate getExpectedFirstDepositOnDate() {
-        LocalDate expectedFirstDepositOnLocalDate = null;
-        if (this.expectedFirstDepositOnDate != null) {
-            expectedFirstDepositOnLocalDate = new LocalDate(this.expectedFirstDepositOnDate);
-        }
-        return expectedFirstDepositOnLocalDate;
+        return this.expectedFirstDepositOnDate;
     }
 
     public boolean isPreClosurePenalApplicable() {
@@ -270,16 +253,16 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
         final SavingsPeriodFrequencyType depositPeriodFrequencyType = periodFrequencyType;
         switch (depositPeriodFrequencyType) {
             case DAYS:
-                actualDepositPeriod = Days.daysBetween(depositFromDate, interestPostingUpToDate).getDays();
+                actualDepositPeriod = Math.toIntExact(ChronoUnit.DAYS.between(depositFromDate, interestPostingUpToDate));
             break;
             case WEEKS:
-                actualDepositPeriod = Weeks.weeksBetween(depositFromDate, interestPostingUpToDate).getWeeks();
+                actualDepositPeriod = Math.toIntExact(ChronoUnit.WEEKS.between(depositFromDate, interestPostingUpToDate));
             break;
             case MONTHS:
-                actualDepositPeriod = Months.monthsBetween(depositFromDate, interestPostingUpToDate).getMonths();
+                actualDepositPeriod = Math.toIntExact(ChronoUnit.MONTHS.between(depositFromDate, interestPostingUpToDate));
             break;
             case YEARS:
-                actualDepositPeriod = Years.yearsBetween(depositFromDate, interestPostingUpToDate).getYears();
+                actualDepositPeriod = Math.toIntExact(ChronoUnit.YEARS.between(depositFromDate, interestPostingUpToDate));
             break;
             case INVALID:
                 actualDepositPeriod = this.depositPeriod;// default value
@@ -324,7 +307,7 @@ public class DepositAccountTermAndPreClosure extends AbstractPersistableCustom {
     }
 
     public void updateExpectedFirstDepositDate(final LocalDate expectedFirstDepositOnDate) {
-        this.expectedFirstDepositOnDate = expectedFirstDepositOnDate.toDate();
+        this.expectedFirstDepositOnDate = expectedFirstDepositOnDate;
     }
 
     public boolean isTransferInterestToLinkedAccount() {

@@ -18,10 +18,17 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface LoanRepaymentScheduleInstallmentRepository
         extends JpaRepository<LoanRepaymentScheduleInstallment, Long>, JpaSpecificationExecutor<LoanRepaymentScheduleInstallment> {
 
+    LoanRepaymentScheduleInstallment findFirstByLoanAndDueDateLessThanEqualAndObligationsMetOnDateOrderByDueDate(Loan loan,
+            LocalDate businnessDate, LocalDate obligationsMetOnDate);
+
+    List<LoanRepaymentScheduleInstallment> findByLoanAndDueDateLessThanEqualAndObligationsMetOnDateOrderByDueDate(Loan loan,
+            LocalDate businnessDate, LocalDate obligationsMetOnDate);
 }

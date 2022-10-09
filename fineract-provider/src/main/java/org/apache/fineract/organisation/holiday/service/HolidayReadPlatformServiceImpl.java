@@ -20,20 +20,18 @@ package org.apache.fineract.organisation.holiday.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.holiday.data.HolidayData;
 import org.apache.fineract.organisation.holiday.domain.RescheduleType;
 import org.apache.fineract.organisation.holiday.exception.HolidayNotFoundException;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,9 +45,9 @@ public class HolidayReadPlatformServiceImpl implements HolidayReadPlatformServic
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public HolidayReadPlatformServiceImpl(final PlatformSecurityContext context, final RoutingDataSource dataSource) {
+    public HolidayReadPlatformServiceImpl(final PlatformSecurityContext context, final JdbcTemplate jdbcTemplate) {
         this.context = context;
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     private static final class HolidayMapper implements RowMapper<HolidayData> {
@@ -87,10 +85,11 @@ public class HolidayReadPlatformServiceImpl implements HolidayReadPlatformServic
     }
 
     @Override
-    public Collection<HolidayData> retrieveAllHolidaysBySearchParamerters(final Long officeId, final Date fromDate, final Date toDate) {
+    public Collection<HolidayData> retrieveAllHolidaysBySearchParamerters(final Long officeId, final LocalDate fromDate,
+            final LocalDate toDate) {
         this.context.authenticatedUser();
 
-        final DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+        final DateTimeFormatter df = DateUtils.DEFAULT_DATE_FORMATTER;
 
         final Object[] objectArray = new Object[3];
         int arrayPos = 0;
@@ -121,7 +120,7 @@ public class HolidayReadPlatformServiceImpl implements HolidayReadPlatformServic
 
         final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
 
-        return this.jdbcTemplate.query(sql, rm, finalObjectArray);
+        return this.jdbcTemplate.query(sql, rm, finalObjectArray); // NOSONAR
     }
 
     @Override
@@ -131,7 +130,7 @@ public class HolidayReadPlatformServiceImpl implements HolidayReadPlatformServic
 
             final String sql = " select " + rm.schema() + " where h.id = ?";
 
-            return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { holidayId });
+            return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { holidayId }); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new HolidayNotFoundException(holidayId, e);
         }

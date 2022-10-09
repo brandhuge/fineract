@@ -18,10 +18,10 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +44,7 @@ public class LoanRepositoryWrapper {
         this.repository = repository;
     }
 
+    @Transactional(readOnly = true)
     public Loan findOneWithNotFoundDetection(final Long id) {
         return this.findOneWithNotFoundDetection(id, false);
     }
@@ -87,13 +88,13 @@ public class LoanRepositoryWrapper {
     }
 
     // Only root entities is enough
-    public List<Loan> getGroupLoansDisbursedAfter(@Param("disbursementDate") Date disbursementDate, @Param("groupId") Long groupId,
+    public List<Loan> getGroupLoansDisbursedAfter(@Param("disbursementDate") LocalDate disbursementDate, @Param("groupId") Long groupId,
             @Param("loanType") Integer loanType) {
         return this.repository.getGroupLoansDisbursedAfter(disbursementDate, groupId, loanType);
     }
 
     // Only root entities enough
-    public List<Loan> getClientOrJLGLoansDisbursedAfter(@Param("disbursementDate") Date disbursementDate,
+    public List<Loan> getClientOrJLGLoansDisbursedAfter(@Param("disbursementDate") LocalDate disbursementDate,
             @Param("clientId") Long clientId) {
         return this.repository.getClientOrJLGLoansDisbursedAfter(disbursementDate, clientId);
     }
@@ -109,6 +110,16 @@ public class LoanRepositoryWrapper {
 
     public Integer getMaxClientOrJLGLoanCounter(@Param("clientId") Long clientId) {
         return this.repository.getMaxClientOrJLGLoanCounter(clientId);
+    }
+
+    public List<LoanRepaymentScheduleInstallment> getLoanRepaymentScheduleInstallments(final Long loanId) {
+        final Loan loan = this.repository.findById(loanId).orElseThrow(() -> new LoanNotFoundException(loanId));
+        final List<LoanRepaymentScheduleInstallment> loanRepaymentScheduleInstallments = loan.getRepaymentScheduleInstallments();
+        return loanRepaymentScheduleInstallments;
+    }
+
+    public Integer getNumberOfRepayments(final Long loanId) {
+        return this.repository.findById(loanId).orElseThrow(() -> new LoanNotFoundException(loanId)).getNumberOfRepayments();
     }
 
     public Integer getMaxClientOrJLGLoanProductCounter(@Param("productId") Long productId, @Param("clientId") Long clientId) {
@@ -181,7 +192,7 @@ public class LoanRepositoryWrapper {
     }
 
     // This method is not used
-    public List<Long> getLoansDisbursedAfter(@Param("disbursalDate") Date disbursalDate) {
+    public List<Long> getLoansDisbursedAfter(@Param("disbursalDate") LocalDate disbursalDate) {
         return this.repository.getLoansDisbursedAfter(disbursalDate);
     }
 
@@ -227,6 +238,10 @@ public class LoanRepositoryWrapper {
 
     public Loan findNonClosedLoanByAccountNumber(@Param("accountNumber") String accountNumber) {
         return this.repository.findNonClosedLoanByAccountNumber(accountNumber);
+    }
+
+    public boolean existLoanByExternalId(final String externalId) {
+        return this.repository.existsByExternalId(externalId);
     }
 
     // Looks like we need complete entity

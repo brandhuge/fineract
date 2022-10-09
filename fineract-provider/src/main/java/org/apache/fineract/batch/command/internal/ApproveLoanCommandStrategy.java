@@ -21,13 +21,11 @@ package org.apache.fineract.batch.command.internal;
 import com.google.common.base.Splitter;
 import java.util.List;
 import javax.ws.rs.core.UriInfo;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.batch.command.CommandStrategy;
 import org.apache.fineract.batch.domain.BatchRequest;
 import org.apache.fineract.batch.domain.BatchResponse;
-import org.apache.fineract.batch.exception.ErrorHandler;
-import org.apache.fineract.batch.exception.ErrorInfo;
 import org.apache.fineract.portfolio.loanaccount.api.LoansApiResource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,14 +42,10 @@ import org.springframework.stereotype.Component;
  * @see org.apache.fineract.batch.domain.BatchResponse
  */
 @Component
+@RequiredArgsConstructor
 public class ApproveLoanCommandStrategy implements CommandStrategy {
 
     private final LoansApiResource loansApiResource;
-
-    @Autowired
-    public ApproveLoanCommandStrategy(final LoansApiResource loansApiResource) {
-        this.loansApiResource = loansApiResource;
-    }
 
     @Override
     public BatchResponse execute(final BatchRequest request, @SuppressWarnings("unused") UriInfo uriInfo) {
@@ -65,27 +59,14 @@ public class ApproveLoanCommandStrategy implements CommandStrategy {
         final List<String> pathParameters = Splitter.on('/').splitToList(request.getRelativeUrl());
         Long loanId = Long.parseLong(pathParameters.get(1).substring(0, pathParameters.get(1).indexOf("?")));
 
-        // Try-catch blocks to map exceptions to appropriate status codes
-        try {
+        // Calls 'approve' function from 'LoansApiResource' to approve a
+        // loan
+        responseBody = loansApiResource.stateTransitions(loanId, "approve", request.getBody());
 
-            // Calls 'approve' function from 'LoansApiResource' to approve a
-            // loan
-            responseBody = loansApiResource.stateTransitions(loanId, "approve", request.getBody());
-
-            response.setStatusCode(200);
-            // Sets the body of the response after the successful approval of a
-            // loan
-            response.setBody(responseBody);
-
-        } catch (RuntimeException e) {
-
-            // Gets an object of type ErrorInfo, containing information about
-            // raised exception
-            ErrorInfo ex = ErrorHandler.handler(e);
-
-            response.setStatusCode(ex.getStatusCode());
-            response.setBody(ex.getMessage());
-        }
+        response.setStatusCode(200);
+        // Sets the body of the response after the successful approval of a
+        // loan
+        response.setBody(responseBody);
 
         return response;
     }

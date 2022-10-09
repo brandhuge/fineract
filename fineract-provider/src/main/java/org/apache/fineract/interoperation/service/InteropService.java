@@ -18,12 +18,13 @@
  */
 package org.apache.fineract.interoperation.service;
 
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import javax.validation.constraints.NotNull;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.interoperation.data.InteropAccountData;
 import org.apache.fineract.interoperation.data.InteropIdentifierAccountResponseData;
 import org.apache.fineract.interoperation.data.InteropIdentifiersResponseData;
+import org.apache.fineract.interoperation.data.InteropKycResponseData;
 import org.apache.fineract.interoperation.data.InteropQuoteResponseData;
 import org.apache.fineract.interoperation.data.InteropTransactionRequestResponseData;
 import org.apache.fineract.interoperation.data.InteropTransactionsData;
@@ -74,4 +75,10 @@ public interface InteropService {
 
     @NotNull
     InteropTransferResponseData releaseTransfer(@NotNull JsonCommand command);
+
+    @NotNull
+    InteropKycResponseData getKyc(@NotNull String accountId);
+
+    @NotNull
+    String disburseLoan(@NotNull String accountId, String apiRequestBodyAsJson);
 }

@@ -19,12 +19,14 @@
 package org.apache.fineract.portfolio.client.data;
 
 import java.io.Serializable;
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
+import lombok.Getter;
 
 /**
  * Immutable data object represent the important time-line events of a loan application and loan.
  */
 @SuppressWarnings("unused")
+@Getter
 public class ClientTimelineData implements Serializable {
 
     private final LocalDate submittedOnDate;

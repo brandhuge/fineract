@@ -18,13 +18,15 @@
  */
 package org.apache.fineract.portfolio.client.domain;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -32,19 +34,17 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
-import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.documentmanagement.domain.Image;
@@ -52,15 +52,14 @@ import org.apache.fineract.infrastructure.security.service.RandomPasswordGenerat
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
+import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "m_client", uniqueConstraints = { @UniqueConstraint(columnNames = { "account_no" }, name = "account_no_UNIQUE"), //
         @UniqueConstraint(columnNames = { "mobile_no" }, name = "mobile_no_UNIQUE") })
-public final class Client extends AbstractPersistableCustom {
+public class Client extends AbstractAuditableWithUTCDateTimeCustom {
 
     @Column(name = "account_no", length = 20, unique = true, nullable = false)
     private String accountNumber;
@@ -88,12 +87,10 @@ public final class Client extends AbstractPersistableCustom {
     private CodeValue subStatus;
 
     @Column(name = "activation_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date activationDate;
+    private LocalDate activationDate;
 
     @Column(name = "office_joining_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date officeJoiningDate;
+    private LocalDate officeJoiningDate;
 
     @Column(name = "firstname", length = 50, nullable = true)
     private String firstname;
@@ -123,8 +120,7 @@ public final class Client extends AbstractPersistableCustom {
     private String externalId;
 
     @Column(name = "date_of_birth", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date dateOfBirth;
+    private LocalDate dateOfBirth;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gender_cv_id", nullable = true)
@@ -146,16 +142,14 @@ public final class Client extends AbstractPersistableCustom {
     private CodeValue closureReason;
 
     @Column(name = "closedon_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date closureDate;
+    private LocalDate closureDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reject_reason_cv_id", nullable = true)
     private CodeValue rejectionReason;
 
     @Column(name = "rejectedon_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date rejectionDate;
+    private LocalDate rejectionDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "rejectedon_userid", nullable = true)
@@ -166,16 +160,14 @@ public final class Client extends AbstractPersistableCustom {
     private CodeValue withdrawalReason;
 
     @Column(name = "withdrawn_on_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date withdrawalDate;
+    private LocalDate withdrawalDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "withdraw_on_userid", nullable = true)
     private AppUser withdrawnBy;
 
     @Column(name = "reactivated_on_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date reactivateDate;
+    private LocalDate reactivateDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "reactivated_on_userid", nullable = true)
@@ -186,20 +178,17 @@ public final class Client extends AbstractPersistableCustom {
     private AppUser closedBy;
 
     @Column(name = "submittedon_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date submittedOnDate;
+    private LocalDate submittedOnDate;
 
-    @ManyToOne(optional = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "submittedon_userid", nullable = true)
-    private AppUser submittedBy;
-
-    @Column(name = "updated_on", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date updatedOnDate;
-
-    @ManyToOne(optional = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by", nullable = true)
-    private AppUser updatedBy;
+    /*
+     * Deprecated since common Auditable fields were introduced. Columns and data left untouched to help migration.
+     *
+     * @Column(name = "updated_on", nullable = true) private LocalDate updatedOnDate;
+     *
+     * @ManyToOne(optional = true, fetch = FetchType.LAZY)
+     *
+     * @JoinColumn(name = "updated_by", nullable = true) private AppUser updatedBy;
+     */
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "activatedon_userid", nullable = true)
@@ -223,16 +212,17 @@ public final class Client extends AbstractPersistableCustom {
     private Integer legalForm;
 
     @Column(name = "reopened_on_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date reopenedDate;
+    private LocalDate reopenedDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "reopened_by_userid", nullable = true)
     private AppUser reopenedBy;
 
     @Column(name = "proposed_transfer_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date proposedTransferDate;
+    private LocalDate proposedTransferDate;
+
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<ClientCollateralManagement> clientCollateralManagements = new HashSet<>();
 
     public static Client createNew(final AppUser currentUser, final Office clientOffice, final Group clientParentGroup, final Staff staff,
             final Long savingsProductId, final CodeValue gender, final CodeValue clientType, final CodeValue clientClassification,
@@ -266,12 +256,12 @@ public final class Client extends AbstractPersistableCustom {
             officeJoiningDate = activationDate;
         }
 
-        LocalDate submittedOnDate = new LocalDate();
-        if (active && submittedOnDate.isAfter(activationDate)) {
-            submittedOnDate = activationDate;
-        }
+        LocalDate submittedOnDate = DateUtils.getBusinessLocalDate();
         if (command.hasParameter(ClientApiConstants.submittedOnDateParamName)) {
             submittedOnDate = command.localDateValueOfParameterNamed(ClientApiConstants.submittedOnDateParamName);
+        }
+        if (active && submittedOnDate.isAfter(activationDate)) {
+            submittedOnDate = activationDate;
         }
         final Long savingsAccountId = null;
         return new Client(currentUser, status, clientOffice, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
@@ -279,9 +269,7 @@ public final class Client extends AbstractPersistableCustom {
                 savingsAccountId, dataOfBirth, gender, clientType, clientClassification, legalForm, isStaff);
     }
 
-    Client() {
-        this.setLegalForm(null);
-    }
+    protected Client() {}
 
     private Client(final AppUser currentUser, final ClientStatus status, final Office office, final Group clientParentGroup,
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
@@ -297,58 +285,43 @@ public final class Client extends AbstractPersistableCustom {
             this.accountNumber = accountNo;
         }
 
-        this.submittedOnDate = submittedOnDate.toDate();
-        this.submittedBy = currentUser;
+        this.submittedOnDate = submittedOnDate;
 
         this.status = status.getValue();
         this.office = office;
         if (StringUtils.isNotBlank(externalId)) {
             this.externalId = externalId.trim();
-        } else {
-            this.externalId = null;
         }
 
         if (StringUtils.isNotBlank(mobileNo)) {
             this.mobileNo = mobileNo.trim();
-        } else {
-            this.mobileNo = null;
         }
 
         if (StringUtils.isNotBlank(emailAddress)) {
             this.emailAddress = emailAddress.trim();
-        } else {
-            this.emailAddress = null;
         }
 
         if (activationDate != null) {
-            this.activationDate = activationDate.toDateTimeAtStartOfDay().toDate();
+            this.activationDate = activationDate;
             this.activatedBy = currentUser;
         }
-        if (officeJoiningDate != null) {
-            this.officeJoiningDate = officeJoiningDate.toDateTimeAtStartOfDay().toDate();
-        }
+
+        this.officeJoiningDate = officeJoiningDate;
+
         if (StringUtils.isNotBlank(firstname)) {
             this.firstname = firstname.trim();
-        } else {
-            this.firstname = null;
         }
 
         if (StringUtils.isNotBlank(middlename)) {
             this.middlename = middlename.trim();
-        } else {
-            this.middlename = null;
         }
 
         if (StringUtils.isNotBlank(lastname)) {
             this.lastname = lastname.trim();
-        } else {
-            this.lastname = null;
         }
 
         if (StringUtils.isNotBlank(fullname)) {
             this.fullname = fullname.trim();
-        } else {
-            this.fullname = null;
         }
 
         if (clientParentGroup != null) {
@@ -363,9 +336,9 @@ public final class Client extends AbstractPersistableCustom {
         if (gender != null) {
             this.gender = gender;
         }
-        if (dateOfBirth != null) {
-            this.dateOfBirth = dateOfBirth.toDateTimeAtStartOfDay().toDate();
-        }
+
+        this.dateOfBirth = dateOfBirth;
+
         this.clientType = clientType;
         this.clientClassification = clientClassification;
         this.setLegalForm(legalForm);
@@ -425,7 +398,7 @@ public final class Client extends AbstractPersistableCustom {
         if (isActive()) {
             final String defaultUserMessage = "Cannot activate client. Client is already active.";
             final ApiParameterError error = ApiParameterError.parameterError("error.msg.clients.already.active", defaultUserMessage,
-                    ClientApiConstants.activationDateParamName, activationLocalDate.toString(formatter));
+                    ClientApiConstants.activationDateParamName, activationLocalDate.format(formatter));
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             dataValidationErrors.add(error);
@@ -433,7 +406,7 @@ public final class Client extends AbstractPersistableCustom {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
 
-        this.activationDate = activationLocalDate.toDate();
+        this.activationDate = activationLocalDate;
         this.activatedBy = currentUser;
         this.officeJoiningDate = this.activationDate;
         this.status = ClientStatus.ACTIVE.getValue();
@@ -479,7 +452,7 @@ public final class Client extends AbstractPersistableCustom {
     }
 
     private boolean isDateInTheFuture(final LocalDate localDate) {
-        return localDate.isAfter(DateUtils.getLocalDateOfTenant());
+        return localDate.isAfter(DateUtils.getBusinessLocalDate());
     }
 
     public boolean isRejected() {
@@ -611,8 +584,7 @@ public final class Client extends AbstractPersistableCustom {
             actualChanges.put(ClientApiConstants.dateFormatParamName, dateFormatAsInput);
             actualChanges.put(ClientApiConstants.localeParamName, localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(ClientApiConstants.activationDateParamName);
-            this.activationDate = newValue.toDate();
+            this.activationDate = command.localDateValueOfParameterNamed(ClientApiConstants.activationDateParamName);
             this.officeJoiningDate = this.activationDate;
         }
 
@@ -622,8 +594,7 @@ public final class Client extends AbstractPersistableCustom {
             actualChanges.put(ClientApiConstants.dateFormatParamName, dateFormatAsInput);
             actualChanges.put(ClientApiConstants.localeParamName, localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(ClientApiConstants.dateOfBirthParamName);
-            this.dateOfBirth = newValue.toDate();
+            this.dateOfBirth = command.localDateValueOfParameterNamed(ClientApiConstants.dateOfBirthParamName);
         }
 
         if (command.isChangeInLocalDateParameterNamed(ClientApiConstants.submittedOnDateParamName, getSubmittedOnDate())) {
@@ -632,8 +603,7 @@ public final class Client extends AbstractPersistableCustom {
             actualChanges.put(ClientApiConstants.dateFormatParamName, dateFormatAsInput);
             actualChanges.put(ClientApiConstants.localeParamName, localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(ClientApiConstants.submittedOnDateParamName);
-            this.submittedOnDate = newValue.toDate();
+            this.submittedOnDate = command.localDateValueOfParameterNamed(ClientApiConstants.submittedOnDateParamName);
         }
 
         validateUpdate();
@@ -746,23 +716,15 @@ public final class Client extends AbstractPersistableCustom {
     }
 
     public LocalDate getSubmittedOnDate() {
-        return ObjectUtils.defaultIfNull(new LocalDate(this.submittedOnDate), null);
+        return this.submittedOnDate;
     }
 
     public LocalDate getActivationLocalDate() {
-        LocalDate activationLocalDate = null;
-        if (this.activationDate != null) {
-            activationLocalDate = LocalDate.fromDateFields(this.activationDate);
-        }
-        return activationLocalDate;
+        return this.activationDate;
     }
 
     public LocalDate getOfficeJoiningLocalDate() {
-        LocalDate officeJoiningLocalDate = null;
-        if (this.officeJoiningDate != null) {
-            officeJoiningLocalDate = LocalDate.fromDateFields(this.officeJoiningDate);
-        }
-        return officeJoiningLocalDate;
+        return this.officeJoiningDate;
     }
 
     public boolean isOfficeIdentifiedBy(final Long officeId) {
@@ -833,7 +795,7 @@ public final class Client extends AbstractPersistableCustom {
         this.transferToOffice = office;
     }
 
-    public void updateOfficeJoiningDate(final Date date) {
+    public void updateOfficeJoiningDate(final LocalDate date) {
         this.officeJoiningDate = date;
     }
 
@@ -865,7 +827,7 @@ public final class Client extends AbstractPersistableCustom {
         return this.groups;
     }
 
-    public void close(final AppUser currentUser, final CodeValue closureReason, final Date closureDate) {
+    public void close(final AppUser currentUser, final CodeValue closureReason, final LocalDate closureDate) {
         this.closureReason = closureReason;
         this.closureDate = closureDate;
         this.closedBy = currentUser;
@@ -952,19 +914,19 @@ public final class Client extends AbstractPersistableCustom {
     }
 
     public LocalDate getClosureDate() {
-        return ObjectUtils.defaultIfNull(new LocalDate(this.closureDate), null);
+        return this.closureDate;
     }
 
     public LocalDate getRejectedDate() {
-        return ObjectUtils.defaultIfNull(new LocalDate(this.rejectionDate), null);
+        return this.rejectionDate;
     }
 
     public LocalDate getWithdrawalDate() {
-        return ObjectUtils.defaultIfNull(new LocalDate(this.withdrawalDate), null);
+        return this.withdrawalDate;
     }
 
     public LocalDate getReopenedDate() {
-        return this.reopenedDate == null ? null : new LocalDate(this.reopenedDate);
+        return this.reopenedDate;
     }
 
     public CodeValue gender() {
@@ -991,54 +953,42 @@ public final class Client extends AbstractPersistableCustom {
         this.gender = gender;
     }
 
-    public Date dateOfBirth() {
+    public LocalDate dateOfBirth() {
         return this.dateOfBirth;
     }
 
     public LocalDate dateOfBirthLocalDate() {
-        LocalDate dateOfBirth = null;
-        if (this.dateOfBirth != null) {
-            dateOfBirth = LocalDate.fromDateFields(this.dateOfBirth);
-        }
-        return dateOfBirth;
+        return this.dateOfBirth;
     }
 
-    public void reject(AppUser currentUser, CodeValue rejectionReason, Date rejectionDate) {
+    public void reject(AppUser currentUser, CodeValue rejectionReason, LocalDate rejectionDate) {
         this.rejectionReason = rejectionReason;
         this.rejectionDate = rejectionDate;
         this.rejectedBy = currentUser;
-        this.updatedBy = currentUser;
-        this.updatedOnDate = rejectionDate;
         this.status = ClientStatus.REJECTED.getValue();
 
     }
 
-    public void withdraw(AppUser currentUser, CodeValue withdrawalReason, Date withdrawalDate) {
+    public void withdraw(AppUser currentUser, CodeValue withdrawalReason, LocalDate withdrawalDate) {
         this.withdrawalReason = withdrawalReason;
         this.withdrawalDate = withdrawalDate;
         this.withdrawnBy = currentUser;
-        this.updatedBy = currentUser;
-        this.updatedOnDate = withdrawalDate;
         this.status = ClientStatus.WITHDRAWN.getValue();
 
     }
 
-    public void reActivate(AppUser currentUser, Date reactivateDate) {
+    public void reActivate(AppUser currentUser, LocalDate reactivateDate) {
         this.closureDate = null;
         this.closureReason = null;
         this.reactivateDate = reactivateDate;
         this.reactivatedBy = currentUser;
-        this.updatedBy = currentUser;
-        this.updatedOnDate = reactivateDate;
         this.status = ClientStatus.PENDING.getValue();
 
     }
 
-    public void reOpened(AppUser currentUser, Date reopenedDate) {
+    public void reOpened(AppUser currentUser, LocalDate reopenedDate) {
         this.reopenedDate = reopenedDate;
         this.reopenedBy = currentUser;
-        this.updatedBy = currentUser;
-        this.updatedOnDate = reopenedDate;
         this.status = ClientStatus.PENDING.getValue();
 
     }
@@ -1067,11 +1017,11 @@ public final class Client extends AbstractPersistableCustom {
         return this.lastname;
     }
 
-    public Date getProposedTransferDate() {
+    public LocalDate getProposedTransferDate() {
         return proposedTransferDate;
     }
 
-    public void updateProposedTransferDate(Date proposedTransferDate) {
+    public void updateProposedTransferDate(LocalDate proposedTransferDate) {
         this.proposedTransferDate = proposedTransferDate;
     }
 

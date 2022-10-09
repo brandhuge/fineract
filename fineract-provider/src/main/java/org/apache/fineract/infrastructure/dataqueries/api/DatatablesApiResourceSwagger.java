@@ -20,6 +20,7 @@ package org.apache.fineract.infrastructure.dataqueries.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.Map;
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnHeaderData;
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetRowData;
 
@@ -41,26 +42,43 @@ final class DatatablesApiResourceSwagger {
         }
 
         @Schema(example = "m_client")
-        public String appTableName;
+        public String applicationTableName;
         @Schema(example = "extra_client_details")
-        public String datatableName;
-        public List<ResultsetColumnHeaderData> column;
+        public String registeredTableName;
+        public List<ResultsetColumnHeaderData> columnHeaderData;
     }
 
     @Schema(description = "PostDataTablesRequest")
     public static final class PostDataTablesRequest {
 
-        private PostDataTablesRequest() {
+        private PostDataTablesRequest() {}
 
+        static final class PostColumnHeaderData {
+
+            private PostColumnHeaderData() {}
+
+            @Schema(required = true, example = "DOB")
+            public String name;
+            @Schema(required = true, example = "String", description = "Any of them: Boolean | Date | DateTime | Decimal | Dropdown | Number | String | Text")
+            public String type;
+            @Schema(example = "Gender", description = "Used in Code Value fields. Column name becomes: code_cd_name. Mandatory if using type Dropdown, otherwise an error is returned.")
+            public String code;
+            @Schema(example = "true", description = "Defaults to false")
+            public Boolean mandatory;
+            @Schema(example = "1653", description = "Length of the text field. Mandatory if type String is used, otherwise an error is returned.")
+            public Long length;
         }
 
-        @Schema(example = "m_client")
-        public String applicationTableName;
-        @Schema(example = "extra_client_details")
-        public String registeredTableName;
+        @Schema(required = true, example = "m_client")
+        public String apptableName;
+        @Schema(required = true, example = "extra_client_details")
+        public String datatableName;
+        @Schema(example = "abc")
+        public String entitySubType;
         @Schema(required = false, description = "Allows to create multiple entries in the Data Table. Optional, defaults to false. If this property is not provided Data Table will allow only one entry.", example = "true")
         public boolean multiRow;
-        public List<ResultsetColumnHeaderData> columnHeaderData;
+        @Schema(required = true)
+        public List<PostColumnHeaderData> columns;
     }
 
     @Schema(description = "PostDataTablesResponse")
@@ -203,17 +221,6 @@ final class DatatablesApiResourceSwagger {
         public List<ResultsetRowData> data;
     }
 
-    @Schema(description = "PutDataTablesAppTableIdRequest")
-    public static final class PutDataTablesAppTableIdRequest {
-
-        private PutDataTablesAppTableIdRequest() {
-
-        }
-
-        @Schema(example = "Livestock sales updated")
-        public String BusinessDescription;
-    }
-
     @Schema(description = "PutDataTablesAppTableIdResponse")
     public static final class PutDataTablesAppTableIdResponse {
 
@@ -221,40 +228,15 @@ final class DatatablesApiResourceSwagger {
 
         }
 
-        static final class PutDataTablesAppTableIdResponseChanges {
-
-            private PutDataTablesAppTableIdResponseChanges() {}
-
-            @Schema(example = "Livestock sales updated")
-            public String BusinessDescription;
-        }
-
+        @Schema(example = "1")
+        public Long officeId;
+        @Schema(example = "1")
+        public Long clientId;
+        @Schema(example = "1")
+        public Long loanId;
         @Schema(example = "1")
         public Long resourceId;
-        public PutDataTablesAppTableIdResponseChanges changes;
-    }
-
-    @Schema(description = "PutDataTablesAppTableIdDatatableIdRequest")
-    public static final class PutDataTablesAppTableIdDatatableIdRequest {
-
-        private PutDataTablesAppTableIdDatatableIdRequest() {
-
-        }
-
-        @Schema(example = "01 June 1982")
-        public String DateOfBirth;
-        @Schema(example = "5")
-        public Long Education_cdHighest;
-        @Schema(example = "June")
-        public String Name;
-        @Schema(example = "More notes")
-        public String OtherNotes;
-        @Schema(example = "20")
-        public Long PointsScore;
-        @Schema(example = "dd MMMM yyyy")
-        public String dateFormat;
-        @Schema(example = "en")
-        public String locale;
+        public Map<String, Object> changes;
     }
 
     @Schema(description = "PutDataTablesAppTableIdDatatableIdResponse ")
@@ -265,7 +247,14 @@ final class DatatablesApiResourceSwagger {
         }
 
         @Schema(example = "1")
+        public Long officeId;
+        @Schema(example = "1")
+        public Long clientId;
+        @Schema(example = "1")
+        public Long loanId;
+        @Schema(example = "1")
         public Long resourceId;
+        public Map<String, Object> changes;
     }
 
     @Schema(description = "DeleteDataTablesDatatableAppTableIdResponse ")

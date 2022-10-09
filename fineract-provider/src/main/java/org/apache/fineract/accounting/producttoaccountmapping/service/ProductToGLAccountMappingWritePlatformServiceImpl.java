@@ -25,6 +25,7 @@ import com.google.gson.JsonElement;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.common.AccountingConstants.AccrualAccountsForLoan;
 import org.apache.fineract.accounting.common.AccountingConstants.CashAccountsForLoan;
 import org.apache.fineract.accounting.common.AccountingConstants.CashAccountsForSavings;
@@ -37,11 +38,11 @@ import org.apache.fineract.accounting.producttoaccountmapping.serialization.Prod
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ProductToGLAccountMappingWritePlatformServiceImpl implements ProductToGLAccountMappingWritePlatformService {
 
     private final FromJsonHelper fromApiJsonHelper;
@@ -49,19 +50,6 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
     private final LoanProductToGLAccountMappingHelper loanProductToGLAccountMappingHelper;
     private final SavingsProductToGLAccountMappingHelper savingsProductToGLAccountMappingHelper;
     private final ShareProductToGLAccountMappingHelper shareProductToGLAccountMappingHelper;
-
-    @Autowired
-    public ProductToGLAccountMappingWritePlatformServiceImpl(final FromJsonHelper fromApiJsonHelper,
-            final ProductToGLAccountMappingFromApiJsonDeserializer deserializer,
-            final LoanProductToGLAccountMappingHelper loanProductToGLAccountMappingHelper,
-            final SavingsProductToGLAccountMappingHelper savingsProductToGLAccountMappingHelper,
-            final ShareProductToGLAccountMappingHelper shareProductToGLAccountMappingHelper) {
-        this.fromApiJsonHelper = fromApiJsonHelper;
-        this.deserializer = deserializer;
-        this.loanProductToGLAccountMappingHelper = loanProductToGLAccountMappingHelper;
-        this.savingsProductToGLAccountMappingHelper = savingsProductToGLAccountMappingHelper;
-        this.shareProductToGLAccountMappingHelper = shareProductToGLAccountMappingHelper;
-    }
 
     @Override
     @Transactional
@@ -74,9 +62,10 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
             case NONE:
             break;
             case CASH_BASED:
-                // asset
-                this.loanProductToGLAccountMappingHelper.saveLoanToAssetAccountMapping(element,
+                // asset or liability
+                this.loanProductToGLAccountMappingHelper.saveLoanToAssetOrLiabilityAccountMapping(element,
                         LoanProductAccountingParams.FUND_SOURCE.getValue(), loanProductId, CashAccountsForLoan.FUND_SOURCE.getValue());
+                // asset
                 this.loanProductToGLAccountMappingHelper.saveLoanToAssetAccountMapping(element,
                         LoanProductAccountingParams.LOAN_PORTFOLIO.getValue(), loanProductId,
                         CashAccountsForLoan.LOAN_PORTFOLIO.getValue());
@@ -102,6 +91,9 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
                 this.loanProductToGLAccountMappingHelper.saveLoanToExpenseAccountMapping(element,
                         LoanProductAccountingParams.LOSSES_WRITTEN_OFF.getValue(), loanProductId,
                         CashAccountsForLoan.LOSSES_WRITTEN_OFF.getValue());
+                this.loanProductToGLAccountMappingHelper.saveLoanToExpenseAccountMapping(element,
+                        LoanProductAccountingParams.GOODWILL_CREDIT.getValue(), loanProductId,
+                        CashAccountsForLoan.GOODWILL_CREDIT.getValue());
 
                 // liabilities
                 this.loanProductToGLAccountMappingHelper.saveLoanToLiabilityAccountMapping(element,
@@ -114,9 +106,11 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
             case ACCRUAL_UPFRONT:
                 // Fall Through
             case ACCRUAL_PERIODIC:
+                // asset or liability
+                this.loanProductToGLAccountMappingHelper.saveLoanToAssetOrLiabilityAccountMapping(element,
+                        LoanProductAccountingParams.FUND_SOURCE.getValue(), loanProductId, CashAccountsForLoan.FUND_SOURCE.getValue());
+
                 // assets (including receivables)
-                this.loanProductToGLAccountMappingHelper.saveLoanToAssetAccountMapping(element,
-                        LoanProductAccountingParams.FUND_SOURCE.getValue(), loanProductId, AccrualAccountsForLoan.FUND_SOURCE.getValue());
                 this.loanProductToGLAccountMappingHelper.saveLoanToAssetAccountMapping(element,
                         LoanProductAccountingParams.LOAN_PORTFOLIO.getValue(), loanProductId,
                         AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue());
@@ -151,6 +145,9 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
                 this.loanProductToGLAccountMappingHelper.saveLoanToExpenseAccountMapping(element,
                         LoanProductAccountingParams.LOSSES_WRITTEN_OFF.getValue(), loanProductId,
                         AccrualAccountsForLoan.LOSSES_WRITTEN_OFF.getValue());
+                this.loanProductToGLAccountMappingHelper.saveLoanToExpenseAccountMapping(element,
+                        LoanProductAccountingParams.GOODWILL_CREDIT.getValue(), loanProductId,
+                        AccrualAccountsForLoan.GOODWILL_CREDIT.getValue());
 
                 // liabilities
                 this.loanProductToGLAccountMappingHelper.saveLoanToLiabilityAccountMapping(element,
@@ -315,6 +312,7 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
     }
 
     @Override
+    @Transactional
     public Map<String, Object> updateSavingsProductToGLAccountMapping(final Long savingsProductId, final JsonCommand command,
             final boolean accountingRuleChanged, final int accountingRuleTypeId, final DepositAccountType accountType) {
         /***
@@ -346,6 +344,7 @@ public class ProductToGLAccountMappingWritePlatformServiceImpl implements Produc
     }
 
     @Override
+    @Transactional
     public Map<String, Object> updateShareProductToGLAccountMapping(final Long shareProductId, final JsonCommand command,
             final boolean accountingRuleChanged, final int accountingRuleTypeId) {
         /***

@@ -18,11 +18,10 @@
  */
 package org.apache.fineract.infrastructure.bulkimport.populator.loanrepayment;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,10 +52,10 @@ import org.slf4j.LoggerFactory;
 public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoanRepaymentWorkbookPopulator.class);
-    private OfficeSheetPopulator officeSheetPopulator;
-    private ClientSheetPopulator clientSheetPopulator;
-    private ExtrasSheetPopulator extrasSheetPopulator;
-    private List<LoanAccountData> allloans;
+    private final OfficeSheetPopulator officeSheetPopulator;
+    private final ClientSheetPopulator clientSheetPopulator;
+    private final ExtrasSheetPopulator extrasSheetPopulator;
+    private final List<LoanAccountData> allloans;
     private Map<Long, String> clientIdToClientExternalId;
 
     public LoanRepaymentWorkbookPopulator(List<LoanAccountData> loans, OfficeSheetPopulator officeSheetPopulator,
@@ -173,7 +172,7 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
             Integer[] officeNameToBeginEndIndexesOfClients = clientSheetPopulator.getOfficeNameToBeginEndIndexesOfClients().get(i);
             Name name = loanRepaymentWorkbook.createName();
             if (officeNameToBeginEndIndexesOfClients != null) {
-                name.setNameName("Client_" + officeNames.get(i).trim().replaceAll("[ )(]", "_"));
+                setSanitized(name, "Client_" + officeNames.get(i));
                 name.setRefersToFormula(TemplatePopulateImportConstants.CLIENT_SHEET_NAME + "!$B$" + officeNameToBeginEndIndexesOfClients[0]
                         + ":$B$" + officeNameToBeginEndIndexesOfClients[1]);
             }
@@ -181,9 +180,9 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
 
         // Counting clients with active loans and starting and end addresses of
         // cells
-        HashMap<String, Integer[]> clientNameToBeginEndIndexes = new HashMap<String, Integer[]>();
-        ArrayList<String> clientsWithActiveLoans = new ArrayList<String>();
-        ArrayList<String> clientIdsWithActiveLoans = new ArrayList<String>();
+        HashMap<String, Integer[]> clientNameToBeginEndIndexes = new HashMap<>();
+        ArrayList<String> clientsWithActiveLoans = new ArrayList<>();
+        ArrayList<String> clientIdsWithActiveLoans = new ArrayList<>();
         int startIndex = 1;
         int endIndex = 1;
         String clientName = "";
@@ -209,7 +208,7 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
         // Account Number Named after Clients
         for (int j = 0; j < clientsWithActiveLoans.size(); j++) {
             Name name = loanRepaymentWorkbook.createName();
-            name.setNameName("Account_" + clientsWithActiveLoans.get(j).replace(" ", "_") + "_" + clientIdsWithActiveLoans.get(j) + "_");
+            setSanitized(name, "Account_" + clientsWithActiveLoans.get(j) + "_" + clientIdsWithActiveLoans.get(j) + "_");
             name.setRefersToFormula(TemplatePopulateImportConstants.LOAN_REPAYMENT_SHEET_NAME + "!$T$"
                     + clientNameToBeginEndIndexes.get(clientsWithActiveLoans.get(j))[0] + ":$T$"
                     + clientNameToBeginEndIndexes.get(clientsWithActiveLoans.get(j))[1]);
@@ -229,9 +228,7 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
         CellStyle dateCellStyle = workbook.createCellStyle();
         short df = workbook.createDataFormat().getFormat(dateFormat);
         dateCellStyle.setDataFormat(df);
-        SimpleDateFormat outputFormat = new SimpleDateFormat(dateFormat);
-        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd");
-        Date date = null;
+        DateTimeFormatter outputFormat = new DateTimeFormatterBuilder().appendPattern(dateFormat).toFormatter();
         Collections.sort(allloans, new LoanComparatorByStatusActive());
         for (LoanAccountData loan : allloans) {
             row = loanRepaymentSheet.createRow(rowIndex++);
@@ -244,13 +241,8 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
                 writeBigDecimal(LoanRepaymentConstants.LOOKUP_TOTAL_OUTSTANDING_AMOUNT_COL, row, loan.getTotalOutstandingAmount());
             }
             if (loan.getDisbursementDate() != null) {
-                try {
-                    date = inputFormat.parse(loan.getDisbursementDate().toString());
-                } catch (ParseException e) {
-                    LOG.error("Problem occurred in populateLoansTable function", e);
-                }
-                writeDate(LoanRepaymentConstants.LOOKUP_LOAN_DISBURSEMENT_DATE_COL, row, outputFormat.format(date), dateCellStyle,
-                        dateFormat);
+                writeDate(LoanRepaymentConstants.LOOKUP_LOAN_DISBURSEMENT_DATE_COL, row, outputFormat.format(loan.getDisbursementDate()),
+                        dateCellStyle, dateFormat);
             }
         }
     }
@@ -305,7 +297,5 @@ public class LoanRepaymentWorkbookPopulator extends AbstractWorkbookPopulator {
         writeString(LoanRepaymentConstants.LOOKUP_PRINCIPAL_COL, rowHeader, "Lookup Principal");
         writeString(LoanRepaymentConstants.LOOKUP_TOTAL_OUTSTANDING_AMOUNT_COL, rowHeader, "Lookup Total Outstanding amount");
         writeString(LoanRepaymentConstants.LOOKUP_LOAN_DISBURSEMENT_DATE_COL, rowHeader, "Lookup Loan Disbursement Date");
-
     }
-
 }

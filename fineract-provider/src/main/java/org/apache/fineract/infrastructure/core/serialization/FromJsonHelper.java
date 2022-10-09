@@ -26,6 +26,10 @@ import com.google.gson.JsonParser;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.security.InvalidParameterException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -36,9 +40,6 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
-import org.joda.time.MonthDay;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -203,17 +204,30 @@ public class FromJsonHelper {
         return this.helperDelegator.extractLocalDateNamed(parameterName, element, new HashSet<>());
     }
 
-    public LocalDateTime extractLocalTimeNamed(final String parameterName, final JsonElement element) {
+    public LocalTime extractLocalTimeNamed(final String parameterName, final JsonElement element) {
         return this.helperDelegator.extractLocalTimeNamed(parameterName, element, new HashSet<>());
     }
 
-    public LocalDateTime extractLocalTimeNamed(final String parameterName, final JsonElement element, final String dateFormat,
+    public LocalDateTime extractLocalDateTimeNamed(final String parameterName, final JsonElement element) {
+        return this.helperDelegator.extractLocalDateTimeNamed(parameterName, element, new HashSet<>());
+    }
+
+    public LocalTime extractLocalTimeNamed(final String parameterName, final JsonElement element, final String dateFormat,
             final Locale locale) {
         return this.helperDelegator.extractLocalTimeNamed(parameterName, element, dateFormat, locale, new HashSet<>());
     }
 
-    public LocalDateTime extractLocalTimeNamed(final String parameterName, final JsonElement element, String timeFormat) {
+    public LocalTime extractLocalTimeNamed(final String parameterName, final JsonElement element, String timeFormat) {
         return this.helperDelegator.extractLocalTimeNamed(parameterName, element, timeFormat, new HashSet<>());
+    }
+
+    public LocalDateTime extractLocalDateTimeNamed(final String parameterName, final JsonElement element, final String dateFormat,
+            final Locale locale) {
+        return this.helperDelegator.extractLocalDateTimeNamed(parameterName, element, dateFormat, locale, new HashSet<>());
+    }
+
+    public LocalDateTime extractLocalDateTimeNamed(final String parameterName, final JsonElement element, String timeFormat) {
+        return this.helperDelegator.extractLocalDateTimeNamed(parameterName, element, timeFormat, new HashSet<>());
     }
 
     public LocalDate extractLocalDateNamed(final String parameterName, final JsonElement element, final String dateFormat,

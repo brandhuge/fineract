@@ -24,6 +24,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -40,16 +41,20 @@ import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterExc
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.accountdetails.domain.AccountType;
 import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
+import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
+import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidAmountOfCollateralQuantity;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidAmountOfCollaterals;
 import org.apache.fineract.portfolio.loanproduct.LoanProductConstants;
+import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.exception.EqualAmortizationUnsupportedFeatureException;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -88,16 +93,21 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             LoanApiConstants.createStandingInstructionAtDisbursementParameterName, LoanApiConstants.isTopup, LoanApiConstants.loanIdToClose,
             LoanApiConstants.datatables, LoanApiConstants.isEqualAmortizationParam, LoanProductConstants.RATES_PARAM_NAME,
             LoanApiConstants.applicationId, // glim specific
-            LoanApiConstants.lastApplication)); // glim specific
+            LoanApiConstants.lastApplication, // glim specific
+            LoanApiConstants.daysInYearTypeParameterName, LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName,
+            LoanApiConstants.DISALLOW_EXPECTED_DISBURSEMENTS));
 
     private final FromJsonHelper fromApiJsonHelper;
     private final CalculateLoanScheduleQueryFromApiJsonHelper apiJsonHelper;
+    private final ClientCollateralManagementRepositoryWrapper clientCollateralManagementRepositoryWrapper;
 
     @Autowired
     public LoanApplicationCommandFromApiJsonHelper(final FromJsonHelper fromApiJsonHelper,
-            final CalculateLoanScheduleQueryFromApiJsonHelper apiJsonHelper) {
+            final CalculateLoanScheduleQueryFromApiJsonHelper apiJsonHelper,
+            final ClientCollateralManagementRepositoryWrapper clientCollateralManagementRepositoryWrapper) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.apiJsonHelper = apiJsonHelper;
+        this.clientCollateralManagementRepositoryWrapper = clientCollateralManagementRepositoryWrapper;
     }
 
     public void validateForCreate(final String json, final boolean isMeetingMandatoryForJLGLoans, final LoanProduct loanProduct) {
@@ -167,6 +177,11 @@ public final class LoanApplicationCommandFromApiJsonHelper {
                 throw new EqualAmortizationUnsupportedFeatureException("interest.recalculation", "interest recalculation");
             }
         }
+
+        BigDecimal fixedPrincipalPercentagePerInstallment = this.fromApiJsonHelper
+                .extractBigDecimalWithLocaleNamed(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName, element);
+        baseDataValidator.reset().parameter(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName)
+                .value(fixedPrincipalPercentagePerInstallment).notLessThanMin(BigDecimal.ONE).notGreaterThanMax(BigDecimal.valueOf(100));
 
         final Long productId = this.fromApiJsonHelper.extractLongNamed("productId", element);
         baseDataValidator.reset().parameter("productId").value(productId).notNull().integerGreaterThanZero();
@@ -301,6 +316,12 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         final Integer amortizationType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(amortizationTypeParameterName, element);
         baseDataValidator.reset().parameter(amortizationTypeParameterName).value(amortizationType).notNull().inMinMaxRange(0, 1);
 
+        if (!amortizationType.equals(AmortizationMethod.EQUAL_PRINCIPAL.getValue()) && fixedPrincipalPercentagePerInstallment != null) {
+            baseDataValidator.reset().parameter(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName).failWithCode(
+                    "not.supported.principal.fixing.not.allowed.with.equal.installments",
+                    "Principal fixing cannot be done with equal installment amortization");
+        }
+
         final String expectedDisbursementDateParameterName = "expectedDisbursementDate";
         final LocalDate expectedDisbursementDate = this.fromApiJsonHelper.extractLocalDateNamed(expectedDisbursementDateParameterName,
                 element);
@@ -414,38 +435,54 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             }
         }
 
-        // collateral
-        final String collateralParameterName = "collateral";
-        if (element.isJsonObject() && this.fromApiJsonHelper.parameterExists(collateralParameterName, element)) {
-            final JsonObject topLevelJsonElement = element.getAsJsonObject();
-            final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
-            if (topLevelJsonElement.get("collateral").isJsonArray()) {
+        /**
+         * TODO: Add collaterals for other loan accounts if needed. For now it's only applicable for individual
+         * accounts. (loanType.isJLG() || loanType.isGLIM())
+         */
 
-                final Type collateralParameterTypeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-                final Set<String> supportedParameters = new HashSet<>(Arrays.asList("id", "type", "value", "description"));
-                final JsonArray array = topLevelJsonElement.get("collateral").getAsJsonArray();
-                for (int i = 1; i <= array.size(); i++) {
-                    final JsonObject collateralItemElement = array.get(i - 1).getAsJsonObject();
+        if (!StringUtils.isBlank(loanTypeStr)) {
+            final AccountType loanType = AccountType.fromName(loanTypeStr);
 
-                    final String collateralJson = this.fromApiJsonHelper.toJson(collateralItemElement);
-                    this.fromApiJsonHelper.checkForUnsupportedParameters(collateralParameterTypeOfMap, collateralJson, supportedParameters);
+            if (loanType.isIndividualAccount()) {
+                // collateral
+                final String collateralParameterName = "collateral";
+                if (element.isJsonObject() && this.fromApiJsonHelper.parameterExists(collateralParameterName, element)) {
+                    final JsonObject topLevelJsonElement = element.getAsJsonObject();
+                    final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
+                    if (topLevelJsonElement.get("collateral").isJsonArray()) {
 
-                    final Long collateralTypeId = this.fromApiJsonHelper.extractLongNamed("type", collateralItemElement);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("type", i).value(collateralTypeId).notNull()
-                            .integerGreaterThanZero();
+                        final Type collateralParameterTypeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+                        final Set<String> supportedParameters = new HashSet<>(Arrays.asList("clientCollateralId", "quantity"));
+                        final JsonArray array = topLevelJsonElement.get("collateral").getAsJsonArray();
+                        for (int i = 1; i <= array.size(); i++) {
+                            final JsonObject collateralItemElement = array.get(i - 1).getAsJsonObject();
 
-                    final BigDecimal collateralValue = this.fromApiJsonHelper.extractBigDecimalNamed("value", collateralItemElement,
-                            locale);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("value", i).value(collateralValue)
-                            .ignoreIfNull().positiveAmount();
+                            final String collateralJson = this.fromApiJsonHelper.toJson(collateralItemElement);
+                            this.fromApiJsonHelper.checkForUnsupportedParameters(collateralParameterTypeOfMap, collateralJson,
+                                    supportedParameters);
 
-                    final String description = this.fromApiJsonHelper.extractStringNamed("description", collateralItemElement);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("description", i).value(description).notBlank()
-                            .notExceedingLengthOf(500);
+                            final Long clientCollateralId = this.fromApiJsonHelper.extractLongNamed("clientCollateralId",
+                                    collateralItemElement);
+                            baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("clientCollateralId", i)
+                                    .value(clientCollateralId).notNull().integerGreaterThanZero();
 
+                            final BigDecimal quantity = this.fromApiJsonHelper.extractBigDecimalNamed("quantity", collateralItemElement,
+                                    locale);
+                            baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("quantity", i).value(quantity).notNull()
+                                    .positiveAmount();
+
+                            final ClientCollateralManagement clientCollateralManagement = this.clientCollateralManagementRepositoryWrapper
+                                    .getCollateral(clientCollateralId);
+
+                            if (clientCollateralId != null
+                                    && BigDecimal.valueOf(0).compareTo(clientCollateralManagement.getQuantity()) >= 0) {
+                                throw new InvalidAmountOfCollateralQuantity(clientCollateralManagement.getQuantity());
+                            }
+                        }
+                    } else {
+                        baseDataValidator.reset().parameter(collateralParameterName).expectedArrayButIsNot();
+                    }
                 }
-            } else {
-                baseDataValidator.reset().parameter(collateralParameterName).expectedArrayButIsNot();
             }
         }
 
@@ -485,7 +522,14 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             baseDataValidator.reset().parameter(LoanApiConstants.datatables).value(datatables).notNull().jsonArrayNotEmpty();
         }
 
-        validateLoanMultiDisbursementdate(element, baseDataValidator, expectedDisbursementDate, principal);
+        if (this.fromApiJsonHelper.parameterExists(LoanApiConstants.daysInYearTypeParameterName, element)) {
+            final Integer daysInYearType = this.fromApiJsonHelper.extractIntegerNamed(LoanApiConstants.daysInYearTypeParameterName, element,
+                    Locale.getDefault());
+            baseDataValidator.reset().parameter(LoanApiConstants.daysInYearTypeParameterName).value(daysInYearType).notNull()
+                    .isOneOfTheseValues(1, 360, 364, 365);
+        }
+
+        validateLoanMultiDisbursementDate(element, baseDataValidator, expectedDisbursementDate, principal);
         validatePartialPeriodSupport(interestCalculationPeriodType, baseDataValidator, element, loanProduct);
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
@@ -542,6 +586,11 @@ public final class LoanApplicationCommandFromApiJsonHelper {
                 throw new EqualAmortizationUnsupportedFeatureException("interest.recalculation", "interest recalculation");
             }
         }
+
+        BigDecimal fixedPrincipalPercentagePerInstallment = this.fromApiJsonHelper
+                .extractBigDecimalWithLocaleNamed(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName, element);
+        baseDataValidator.reset().parameter(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName)
+                .value(fixedPrincipalPercentagePerInstallment).notLessThanMin(BigDecimal.ONE).notGreaterThanMax(BigDecimal.valueOf(100));
 
         final String externalIdParameterName = "externalId";
         if (this.fromApiJsonHelper.parameterExists(externalIdParameterName, element)) {
@@ -721,10 +770,18 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         }
 
         final String amortizationTypeParameterName = "amortizationType";
+        Integer amortizationType = null;
         if (this.fromApiJsonHelper.parameterExists(amortizationTypeParameterName, element)) {
             atLeastOneParameterPassedForUpdate = true;
-            final Integer amortizationType = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(amortizationTypeParameterName, element);
+            amortizationType = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(amortizationTypeParameterName, element);
             baseDataValidator.reset().parameter(amortizationTypeParameterName).value(amortizationType).notNull().inMinMaxRange(0, 1);
+        }
+
+        if (!Integer.valueOf(AmortizationMethod.EQUAL_PRINCIPAL.getValue()).equals(amortizationType)
+                && fixedPrincipalPercentagePerInstallment != null) {
+            baseDataValidator.reset().parameter(LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName).failWithCode(
+                    "not.supported.principal.fixing.not.allowed.with.equal.installments",
+                    "Principal fixing cannot be done with equal installment amortization");
         }
 
         final String expectedDisbursementDateParameterName = "expectedDisbursementDate";
@@ -840,38 +897,69 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             }
         }
 
-        // collateral
-        final String collateralParameterName = "collateral";
-        if (element.isJsonObject() && this.fromApiJsonHelper.parameterExists(collateralParameterName, element)) {
-            final JsonObject topLevelJsonElement = element.getAsJsonObject();
-            final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
-            if (topLevelJsonElement.get("collateral").isJsonArray()) {
+        final String loanTypeParameterName = "loanType";
+        final String loanTypeStr = this.fromApiJsonHelper.extractStringNamed(loanTypeParameterName, element);
+        baseDataValidator.reset().parameter(loanTypeParameterName).value(loanTypeStr).notNull();
 
-                final Type collateralParameterTypeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-                final Set<String> supportedParameters = new HashSet<>(Arrays.asList("id", "type", "value", "description"));
-                final JsonArray array = topLevelJsonElement.get("collateral").getAsJsonArray();
-                for (int i = 1; i <= array.size(); i++) {
-                    final JsonObject collateralItemElement = array.get(i - 1).getAsJsonObject();
+        if (!StringUtils.isBlank(loanTypeStr)) {
+            final AccountType loanType = AccountType.fromName(loanTypeStr);
 
-                    final String collateralJson = this.fromApiJsonHelper.toJson(collateralItemElement);
-                    this.fromApiJsonHelper.checkForUnsupportedParameters(collateralParameterTypeOfMap, collateralJson, supportedParameters);
+            if (loanType.isInvalid()) {
+                baseDataValidator.reset().parameter(loanTypeParameterName).value(loanType.getValue()).isOneOfEnumValues(AccountType.class);
+            }
 
-                    final Long collateralTypeId = this.fromApiJsonHelper.extractLongNamed("type", collateralItemElement);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("type", i).value(collateralTypeId).notNull()
-                            .integerGreaterThanZero();
+            if (!loanType.isInvalid() && loanType.isIndividualAccount()) {
+                // collateral
+                final String collateralParameterName = "collateral";
+                if (element.isJsonObject() && this.fromApiJsonHelper.parameterExists(collateralParameterName, element)) {
+                    final JsonObject topLevelJsonElement = element.getAsJsonObject();
+                    final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
+                    if (topLevelJsonElement.get("collateral").isJsonArray()) {
 
-                    final BigDecimal collateralValue = this.fromApiJsonHelper.extractBigDecimalNamed("value", collateralItemElement,
-                            locale);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("value", i).value(collateralValue)
-                            .ignoreIfNull().positiveAmount();
+                        final Type collateralParameterTypeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+                        final Set<String> supportedParameters = new HashSet<>(Arrays.asList("id", "clientCollateralId", "quantity"));
+                        final JsonArray array = topLevelJsonElement.get("collateral").getAsJsonArray();
+                        if (array.size() > 0) {
+                            BigDecimal totalAmount = BigDecimal.ZERO;
+                            for (int i = 1; i <= array.size(); i++) {
+                                final JsonObject collateralItemElement = array.get(i - 1).getAsJsonObject();
 
-                    final String description = this.fromApiJsonHelper.extractStringNamed("description", collateralItemElement);
-                    baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("description", i).value(description).notBlank()
-                            .notExceedingLengthOf(500);
+                                final String collateralJson = this.fromApiJsonHelper.toJson(collateralItemElement);
+                                this.fromApiJsonHelper.checkForUnsupportedParameters(collateralParameterTypeOfMap, collateralJson,
+                                        supportedParameters);
 
+                                final Long id = this.fromApiJsonHelper.extractLongNamed("id", collateralItemElement);
+                                baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("id", i).value(id).ignoreIfNull();
+
+                                final Long clientCollateralId = this.fromApiJsonHelper.extractLongNamed("clientCollateralId",
+                                        collateralItemElement);
+                                baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("clientCollateralId", i)
+                                        .value(clientCollateralId).notNull().integerGreaterThanZero();
+
+                                final BigDecimal quantity = this.fromApiJsonHelper.extractBigDecimalNamed("quantity", collateralItemElement,
+                                        locale);
+                                baseDataValidator.reset().parameter("collateral").parameterAtIndexArray("quantity", i).value(quantity)
+                                        .notNull().positiveAmount();
+
+                                if (clientCollateralId != null || quantity != null) {
+                                    BigDecimal baseAmount = this.clientCollateralManagementRepositoryWrapper
+                                            .getCollateral(clientCollateralId).getCollaterals().getBasePrice();
+                                    BigDecimal pctToBase = this.clientCollateralManagementRepositoryWrapper
+                                            .getCollateral(clientCollateralId).getCollaterals().getPctToBase();
+                                    BigDecimal total = baseAmount.multiply(pctToBase).multiply(quantity);
+                                    totalAmount = totalAmount.add(total);
+                                }
+                            }
+                            if (principal != null) {
+                                if (principal.compareTo(totalAmount) > 0) {
+                                    throw new InvalidAmountOfCollaterals(totalAmount);
+                                }
+                            }
+                        }
+                    } else {
+                        baseDataValidator.reset().parameter(collateralParameterName).expectedArrayButIsNot();
+                    }
                 }
-            } else {
-                baseDataValidator.reset().parameter(collateralParameterName).expectedArrayButIsNot();
             }
         }
 
@@ -932,7 +1020,7 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             }
         }
 
-        validateLoanMultiDisbursementdate(element, baseDataValidator, expectedDisbursementDate, principal);
+        validateLoanMultiDisbursementDate(element, baseDataValidator, expectedDisbursementDate, principal);
         validatePartialPeriodSupport(interestCalculationPeriodType, baseDataValidator, element, loanProduct);
 
         if (!dataValidationErrors.isEmpty()) {
@@ -1079,7 +1167,7 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         }
     }
 
-    public void validateLoanMultiDisbursementdate(final JsonElement element, final DataValidatorBuilder baseDataValidator,
+    public void validateLoanMultiDisbursementDate(final JsonElement element, final DataValidatorBuilder baseDataValidator,
             LocalDate expectedDisbursement, BigDecimal totalPrincipal) {
 
         this.validateDisbursementsAreDatewiseOrdered(element, baseDataValidator);
@@ -1189,6 +1277,20 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
 
         validateLoanCharges(loan.charges(), dataValidationErrors);
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+    }
+
+    public void validateLoanForCollaterals(final Loan loan, final BigDecimal total) {
+        String errorCode = "";
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan");
+        if (loan.getProposedPrincipal().compareTo(total) >= 0) {
+            errorCode = LoanApiConstants.LOAN_COLLATERAL_TOTAL_VALUE_SHOULD_BE_SUFFICIENT;
+            baseDataValidator.reset().parameter("collaterals").failWithCode(errorCode);
+        }
+
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }

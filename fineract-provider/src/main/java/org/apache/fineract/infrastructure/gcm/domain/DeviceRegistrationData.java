@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.infrastructure.gcm.domain;
 
-import java.util.Date;
+import java.time.OffsetDateTime;
 import org.apache.fineract.portfolio.client.data.ClientData;
 
 public final class DeviceRegistrationData {
@@ -26,9 +26,10 @@ public final class DeviceRegistrationData {
     public Long id;
     public ClientData clientData;
     public String registrationId;
-    public Date updatedOnDate;
+    public OffsetDateTime updatedOnDate;
 
-    private DeviceRegistrationData(final Long id, final ClientData clientData, final String registrationId, final Date updatedOnDate) {
+    private DeviceRegistrationData(final Long id, final ClientData clientData, final String registrationId,
+            final OffsetDateTime updatedOnDate) {
         this.id = id;
         this.clientData = clientData;
         this.registrationId = registrationId;
@@ -36,7 +37,7 @@ public final class DeviceRegistrationData {
     }
 
     public static DeviceRegistrationData instance(final Long id, final ClientData clientData, final String registrationId,
-            final Date updatedOnDate) {
+            final OffsetDateTime updatedOnDate) {
         return new DeviceRegistrationData(id, clientData, registrationId, updatedOnDate);
     }
 

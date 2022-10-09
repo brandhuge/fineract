@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.infrastructure.configuration.domain;
 
-import java.util.Date;
+import java.time.LocalDate;
 import org.apache.fineract.infrastructure.cache.domain.CacheType;
 
 public interface ConfigurationDomainService {
@@ -67,13 +67,17 @@ public interface ConfigurationDomainService {
 
     boolean isOrganisationstartDateEnabled();
 
-    Date retrieveOrganisationStartDate();
+    LocalDate retrieveOrganisationStartDate();
 
-    boolean isPaymnetypeApplicableforDisbursementCharge();
+    boolean isPaymentTypeApplicableForDisbursementCharge();
 
     boolean isInterestChargedFromDateSameAsDisbursementDate();
 
     boolean isSkippingMeetingOnFirstDayOfMonthEnabled();
+
+    boolean isInterestToBeRecoveredFirstWhenGreaterThanEMI();
+
+    boolean isPrincipalCompoundingDisabledForOverdueLoans();
 
     Long retreivePeroidInNumberOfDaysForSkipMeetingDate();
 
@@ -97,5 +101,21 @@ public interface ConfigurationDomainService {
 
     boolean isFirstRepaymentDateAfterRescheduleAllowedOnHoliday();
 
-    boolean isInterestToBeAppropriatedEquallyWhenGreaterThanEMI();
+    String getAccountMappingForPaymentType();
+
+    String getAccountMappingForCharge();
+
+    boolean isNextDayFixedDepositInterestTransferEnabledForPeriodEnd();
+
+    boolean retrievePivotDateConfig();
+
+    boolean isRelaxingDaysConfigForPivotDateEnabled();
+
+    Long retrieveRelaxingDaysConfigForPivotDate();
+
+    boolean isBusinessDateEnabled();
+
+    boolean isCOBDateAdjustmentEnabled();
+
+    boolean isReversalTransactionAllowed();
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.portfolio.self.client.service;
 
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -33,8 +32,8 @@ public class AppuserClientMapperReadServiceImpl implements AppuserClientMapperRe
     private final PlatformSecurityContext context;
 
     @Autowired
-    public AppuserClientMapperReadServiceImpl(final RoutingDataSource dataSource, final PlatformSecurityContext context) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    public AppuserClientMapperReadServiceImpl(final JdbcTemplate jdbcTemplate, final PlatformSecurityContext context) {
+        this.jdbcTemplate = jdbcTemplate;
         this.context = context;
     }
 
@@ -43,7 +42,7 @@ public class AppuserClientMapperReadServiceImpl implements AppuserClientMapperRe
         return this.jdbcTemplate.queryForObject(
                 "select case when (count(*) > 0) then true else false end "
                         + " from m_selfservice_user_client_mapping where client_id = ? and appuser_id = ?",
-                new Object[] { clientId, appUserId }, Boolean.class);
+                Boolean.class, clientId, appUserId);
     }
 
     @Override

@@ -29,6 +29,7 @@ import org.apache.fineract.accounting.glaccount.service.GLAccountReadPlatformSer
 import org.apache.fineract.infrastructure.bulkimport.constants.TemplatePopulateImportConstants;
 import org.apache.fineract.infrastructure.bulkimport.data.GlobalEntityType;
 import org.apache.fineract.infrastructure.bulkimport.populator.CenterSheetPopulator;
+import org.apache.fineract.infrastructure.bulkimport.populator.ChargeSheetPopulator;
 import org.apache.fineract.infrastructure.bulkimport.populator.ClientSheetPopulator;
 import org.apache.fineract.infrastructure.bulkimport.populator.ExtrasSheetPopulator;
 import org.apache.fineract.infrastructure.bulkimport.populator.FixedDepositProductSheetPopulator;
@@ -92,7 +93,7 @@ import org.apache.fineract.portfolio.loanproduct.service.LoanProductReadPlatform
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadPlatformService;
 import org.apache.fineract.portfolio.products.data.ProductData;
-import org.apache.fineract.portfolio.products.service.ProductReadPlatformService;
+import org.apache.fineract.portfolio.products.service.ShareProductReadPlatformService;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.data.DepositProductData;
 import org.apache.fineract.portfolio.savings.data.FixedDepositProductData;
@@ -131,7 +132,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
     private final SavingsAccountReadPlatformService savingsAccountReadPlatformService;
     private final CodeValueReadPlatformService codeValueReadPlatformService;
     private final SavingsProductReadPlatformService savingsProductReadPlatformService;
-    private final ProductReadPlatformService productReadPlatformService;
+    private final ShareProductReadPlatformService shareProductReadPlatformService;
     private final ChargeReadPlatformService chargeReadPlatformService;
     private final DepositProductReadPlatformService depositProductReadPlatformService;
     private final RoleReadPlatformService roleReadPlatformService;
@@ -148,7 +149,8 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
             final SavingsAccountReadPlatformService savingsAccountReadPlatformService,
             final CodeValueReadPlatformService codeValueReadPlatformService,
             final SavingsProductReadPlatformService savingsProductReadPlatformService,
-            final ProductReadPlatformService productReadPlatformService, final ChargeReadPlatformService chargeReadPlatformService,
+            final ShareProductReadPlatformService shareProductReadPlatformService,
+            final ChargeReadPlatformService chargeReadPlatformService,
             final DepositProductReadPlatformService depositProductReadPlatformService,
             final RoleReadPlatformService roleReadPlatformService) {
         this.officeReadPlatformService = officeReadPlatformService;
@@ -166,7 +168,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
         this.savingsAccountReadPlatformService = savingsAccountReadPlatformService;
         this.codeValueReadPlatformService = codeValueReadPlatformService;
         this.savingsProductReadPlatformService = savingsProductReadPlatformService;
-        this.productReadPlatformService = productReadPlatformService;
+        this.shareProductReadPlatformService = shareProductReadPlatformService;
         this.chargeReadPlatformService = chargeReadPlatformService;
         this.depositProductReadPlatformService = depositProductReadPlatformService;
         this.roleReadPlatformService = roleReadPlatformService;
@@ -195,7 +197,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
             } else if (entityType.trim().equalsIgnoreCase(GlobalEntityType.OFFICES.toString())) {
                 populator = populateOfficeWorkbook();
             } else if (entityType.trim().equalsIgnoreCase(GlobalEntityType.CHART_OF_ACCOUNTS.toString())) {
-                populator = populateChartOfAccountsWorkbook();
+                populator = populateChartOfAccountsWorkbook(officeId);
             } else if (entityType.trim().equalsIgnoreCase(GlobalEntityType.STAFF.toString())) {
                 populator = populateStaffWorkbook(officeId);
             } else if (entityType.trim().equalsIgnoreCase(GlobalEntityType.SHARE_ACCOUNTS.toString())) {
@@ -250,7 +252,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
     }
 
     private Response buildResponse(final Workbook workbook, final String entity) {
-        String filename = entity + DateUtils.getLocalDateOfTenant().toString() + ".xls";
+        String filename = entity + DateUtils.getBusinessLocalDate().toString() + ".xls";
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             workbook.write(baos);
@@ -269,12 +271,18 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
         List<OfficeData> offices = null;
         if (officeId == null) {
             Boolean includeAllOffices = Boolean.TRUE;
-            offices = (List) this.officeReadPlatformService.retrieveAllOffices(includeAllOffices, null);
+            offices = (List) this.officeReadPlatformService.retrieveAllOffices(includeAllOffices, new SearchParameters(null, null, null,
+                    null, null, null, null, null, null, "id", "asc", null, null, null, null, null, null));
         } else {
             offices = new ArrayList<>();
             offices.add(this.officeReadPlatformService.retrieveOffice(officeId));
         }
         return offices;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ChargeData> fetchCharges() {
+        return (List) this.chargeReadPlatformService.retrieveAllCharges();
     }
 
     @SuppressWarnings("unchecked")
@@ -376,13 +384,15 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
         List<StaffData> staff = fetchStaff(staffId);
         List<ClientData> clients = fetchClients(officeId);
         List<GroupGeneralData> groups = fetchGroups(officeId);
+        List<ChargeData> charges = fetchCharges();
         List<LoanProductData> loanproducts = fetchLoanProducts();
         List<FundData> funds = fetchFunds();
         List<PaymentTypeData> paymentTypes = fetchPaymentTypes();
         List<CurrencyData> currencies = fetchCurrencies();
         return new LoanWorkbookPopulator(new OfficeSheetPopulator(offices), new ClientSheetPopulator(clients, offices),
                 new GroupSheetPopulator(groups, offices), new PersonnelSheetPopulator(staff, offices),
-                new LoanProductSheetPopulator(loanproducts), new ExtrasSheetPopulator(funds, paymentTypes, currencies));
+                new LoanProductSheetPopulator(loanproducts), new ChargeSheetPopulator(charges),
+                new ExtrasSheetPopulator(funds, paymentTypes, currencies));
     }
 
     private List<CurrencyData> fetchCurrencies() {
@@ -495,10 +505,12 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
         return new OfficeWorkbookPopulator(offices);
     }
 
-    private WorkbookPopulator populateChartOfAccountsWorkbook() {
+    private WorkbookPopulator populateChartOfAccountsWorkbook(Long officeId) {
         this.context.authenticatedUser().validateHasReadPermission(TemplatePopulateImportConstants.GL_ACCOUNT_ENTITY_TYPE);
         List<GLAccountData> glAccounts = fetchGLAccounts();
-        return new ChartOfAccountsWorkbook(glAccounts);
+        List<OfficeData> offices = fetchOffices(null);
+        return new ChartOfAccountsWorkbook(glAccounts, offices,
+                (List<CurrencyData>) this.currencyReadPlatformService.retrieveAllowedCurrencies());
     }
 
     private WorkbookPopulator populateStaffWorkbook(Long officeId) {
@@ -525,7 +537,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
     }
 
     private List<ShareProductData> fetchSharedProducts() {
-        List<ProductData> productDataList = productReadPlatformService.retrieveAllProducts(0, 50).getPageItems();
+        List<ProductData> productDataList = shareProductReadPlatformService.retrieveAllProducts(0, 50).getPageItems();
         List<ShareProductData> sharedProductDataList = new ArrayList<>();
         if (productDataList != null) {
             for (ProductData data : productDataList) {

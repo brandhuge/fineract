@@ -27,8 +27,9 @@ public enum NoteType {
     LOAN(200, "noteType.loan", "loans"), //
     LOAN_TRANSACTION(300, "noteType.loan.transaction", "loanTransactions"), //
     SAVING_ACCOUNT(500, "noteType.saving", "savings"), //
-    GROUP(600, "noteType.group", "groups"), SHARE_ACCOUNT(700, "noteType.shares", "accounts/share"), SAVINGS_TRANSACTION(800,
-            "noteType.savings.transaction", "savingsTransactions");
+    GROUP(600, "noteType.group", "groups"), //
+    SHARE_ACCOUNT(700, "noteType.shares", "accounts/share"), //
+    SAVINGS_TRANSACTION(800, "noteType.savings.transaction", "savingsTransactions");
 
     private final Integer value;
     private final String code;
@@ -55,6 +56,7 @@ public enum NoteType {
     private static final Map<Integer, NoteType> intToEnumMap = new HashMap<>();
     private static int minValue;
     private static int maxValue;
+
     static {
         int i = 0;
         for (final NoteType type : NoteType.values()) {

@@ -19,13 +19,11 @@
 package org.apache.fineract.batch.command.internal;
 
 import javax.ws.rs.core.UriInfo;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.batch.command.CommandStrategy;
 import org.apache.fineract.batch.domain.BatchRequest;
 import org.apache.fineract.batch.domain.BatchResponse;
-import org.apache.fineract.batch.exception.ErrorHandler;
-import org.apache.fineract.batch.exception.ErrorInfo;
 import org.apache.fineract.portfolio.client.api.ClientsApiResource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,14 +40,10 @@ import org.springframework.stereotype.Component;
  * @see org.apache.fineract.batch.domain.BatchResponse
  */
 @Component
+@RequiredArgsConstructor
 public class CreateClientCommandStrategy implements CommandStrategy {
 
     private final ClientsApiResource clientsApiResource;
-
-    @Autowired
-    public CreateClientCommandStrategy(final ClientsApiResource clientsApiResource) {
-        this.clientsApiResource = clientsApiResource;
-    }
 
     @Override
     public BatchResponse execute(final BatchRequest request, @SuppressWarnings("unused") UriInfo uriInfo) {
@@ -60,27 +54,14 @@ public class CreateClientCommandStrategy implements CommandStrategy {
         response.setRequestId(request.getRequestId());
         response.setHeaders(request.getHeaders());
 
-        // Try-catch blocks to map exceptions to appropriate status codes
-        try {
+        // Calls 'create' function from 'ClientsApiResource' to create a new
+        // client
+        responseBody = clientsApiResource.create(request.getBody());
 
-            // Calls 'create' function from 'ClientsApiResource' to create a new
-            // client
-            responseBody = clientsApiResource.create(request.getBody());
-
-            response.setStatusCode(200);
-            // Sets the body of the response after the successful creation of
-            // the client
-            response.setBody(responseBody);
-
-        } catch (RuntimeException e) {
-
-            // Gets an object of type ErrorInfo, containing information about
-            // raised exception
-            ErrorInfo ex = ErrorHandler.handler(e);
-
-            response.setStatusCode(ex.getStatusCode());
-            response.setBody(ex.getMessage());
-        }
+        response.setStatusCode(200);
+        // Sets the body of the response after the successful creation of
+        // the client
+        response.setBody(responseBody);
 
         return response;
     }

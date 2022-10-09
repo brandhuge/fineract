@@ -18,10 +18,11 @@
  */
 package org.apache.fineract.portfolio.calendar.service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,9 +52,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.loanaccount.service.LoanWritePlatformService;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -119,10 +117,10 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("calendar");
         if (entityActivationDate == null || newCalendar.getStartDateLocalDate().isBefore(entityActivationDate)) {
-            final DateTimeFormatter formatter = DateTimeFormat.forPattern(command.dateFormat()).withLocale(command.extractLocale());
+            final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(command.extractLocale());
             String dateAsString = "";
             if (entityActivationDate != null) {
-                dateAsString = formatter.print(entityActivationDate);
+                dateAsString = formatter.format(entityActivationDate);
             }
 
             final String errorMessage = "cannot.be.before." + entityType.name().toLowerCase() + ".activation.date";
@@ -153,7 +151,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
 
-        this.calendarRepository.save(newCalendar);
+        this.calendarRepository.saveAndFlush(newCalendar);
 
         final CalendarInstance newCalendarInstance = CalendarInstance.from(newCalendar, entityId, entityTypeId);
         this.calendarInstanceRepository.save(newCalendarInstance);
@@ -232,7 +230,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         final Calendar calendarForUpdate = this.calendarRepository.findById(calendarId)
                 .orElseThrow(() -> new CalendarNotFoundException(calendarId));
 
-        final Date oldStartDate = calendarForUpdate.getStartDate();
+        final LocalDate oldStartDate = calendarForUpdate.getStartDate();
         // create calendar history before updating calendar
         final CalendarHistory calendarHistory = new CalendarHistory(calendarForUpdate, oldStartDate);
 
@@ -281,7 +279,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
                 presentMeetingDate = command.localDateValueOfParameterNamed(CalendarSupportedParameters.START_DATE.getValue());
             }
             if (null != newMeetingDate) {
-                final Date endDate = presentMeetingDate.minusDays(1).toDate();
+                final LocalDate endDate = presentMeetingDate.minusDays(1);
                 calendarHistory.updateEndDate(endDate);
             }
             this.calendarHistoryRepository.save(calendarHistory);

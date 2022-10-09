@@ -18,20 +18,17 @@
  */
 package org.apache.fineract.spm.service;
 
-import java.util.Calendar;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
+import javax.persistence.EntityExistsException;
 import javax.persistence.PersistenceException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.spm.domain.Survey;
+import org.apache.fineract.spm.domain.SurveyRepository;
 import org.apache.fineract.spm.domain.SurveyValidator;
 import org.apache.fineract.spm.exception.SurveyNotFoundException;
-import org.apache.fineract.spm.repository.SurveyRepository;
-import org.apache.openjpa.persistence.EntityExistsException;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -56,7 +53,7 @@ public class SpmService {
     public List<Survey> fetchValidSurveys() {
         this.securityContext.authenticatedUser();
 
-        return this.surveyRepository.fetchActiveSurveys(new Date());
+        return this.surveyRepository.fetchActiveSurveys(DateUtils.getLocalDateTimeOfSystem());
     }
 
     public List<Survey> fetchAllSurveys() {
@@ -73,19 +70,15 @@ public class SpmService {
     public Survey createSurvey(final Survey survey) {
         this.securityContext.authenticatedUser();
         this.surveyValidator.validate(survey);
-        final Survey previousSurvey = this.surveyRepository.findByKey(survey.getKey(), new Date());
+        final Survey previousSurvey = this.surveyRepository.findByKey(survey.getKey(), DateUtils.getLocalDateTimeOfSystem());
 
         if (previousSurvey != null) {
             this.deactivateSurvey(previousSurvey.getId());
         }
         // set valid from to start of today
-        LocalDate validFrom = DateUtils.getLocalDateOfTenant();
-        // set valid to for 100 years
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(validFrom.toDate());
-        cal.add(Calendar.YEAR, 100);
-        survey.setValidFrom(validFrom.toDate());
-        survey.setValidTo(cal.getTime());
+        LocalDate validFrom = getStartOfToday();
+        survey.setValidFrom(validFrom);
+        survey.setValidTo(validFrom.plusYears(100));
         try {
             this.surveyRepository.saveAndFlush(survey);
         } catch (final EntityExistsException dve) {
@@ -120,28 +113,25 @@ public class SpmService {
         this.securityContext.authenticatedUser();
 
         final Survey survey = findById(id);
-        final DateTime dateTime = getStartOfToday().minusMillis(1);
-        survey.setValidTo(dateTime.toDate());
+        final LocalDate dateTime = getStartOfToday().minusDays(1);
+        survey.setValidTo(dateTime);
 
-        this.surveyRepository.save(survey);
+        this.surveyRepository.saveAndFlush(survey);
     }
 
     public void activateSurvey(final Long id) {
         this.securityContext.authenticatedUser();
 
         final Survey survey = findById(id);
-        LocalDate validFrom = DateUtils.getLocalDateOfTenant();
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(validFrom.toDate());
-        cal.add(Calendar.YEAR, 100);
-        survey.setValidFrom(validFrom.toDate());
-        survey.setValidTo(cal.getTime());
+        LocalDate validFrom = getStartOfToday();
+        survey.setValidFrom(validFrom);
+        survey.setValidTo(validFrom.plusYears(100));
 
-        this.surveyRepository.save(survey);
+        this.surveyRepository.saveAndFlush(survey);
     }
 
-    public static DateTime getStartOfToday() {
-        return DateTime.now().withHourOfDay(0).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0);
+    public static LocalDate getStartOfToday() {
+        return DateUtils.getLocalDateOfTenant();
     }
 
     private void handleDataIntegrityIssues(final Throwable realCause, final Exception dve, String key) {

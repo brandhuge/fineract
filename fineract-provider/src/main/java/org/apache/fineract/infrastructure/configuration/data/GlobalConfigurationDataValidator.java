@@ -21,6 +21,7 @@ package org.apache.fineract.infrastructure.configuration.data;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,7 +36,6 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -43,9 +43,10 @@ import org.springframework.stereotype.Component;
 public class GlobalConfigurationDataValidator {
 
     private final FromJsonHelper fromApiJsonHelper;
-    private static final Set<String> UPDATE_CONFIGURATION_DATA_PARAMETERS = new HashSet<>(Arrays.asList(
-            GlobalConfigurationApiConstant.localeParamName, GlobalConfigurationApiConstant.dateFormatParamName,
-            GlobalConfigurationApiConstant.ENABLED, GlobalConfigurationApiConstant.VALUE, GlobalConfigurationApiConstant.DATE_VALUE));
+    private static final Set<String> UPDATE_CONFIGURATION_DATA_PARAMETERS = new HashSet<>(
+            Arrays.asList(GlobalConfigurationApiConstant.localeParamName, GlobalConfigurationApiConstant.dateFormatParamName,
+                    GlobalConfigurationApiConstant.ENABLED, GlobalConfigurationApiConstant.VALUE, GlobalConfigurationApiConstant.DATE_VALUE,
+                    GlobalConfigurationApiConstant.STRING_VALUE));
 
     @Autowired
     public GlobalConfigurationDataValidator(final FromJsonHelper fromApiJsonHelper) {
@@ -79,6 +80,11 @@ public class GlobalConfigurationDataValidator {
         if (this.fromApiJsonHelper.parameterExists(GlobalConfigurationApiConstant.DATE_VALUE, element)) {
             final LocalDate dateValue = this.fromApiJsonHelper.extractLocalDateNamed(GlobalConfigurationApiConstant.DATE_VALUE, element);
             baseDataValidator.reset().parameter(GlobalConfigurationApiConstant.DATE_VALUE).value(dateValue).notNull();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(GlobalConfigurationApiConstant.STRING_VALUE, element)) {
+            final String stringValue = this.fromApiJsonHelper.extractStringNamed(GlobalConfigurationApiConstant.STRING_VALUE, element);
+            baseDataValidator.reset().parameter(GlobalConfigurationApiConstant.STRING_VALUE).value(stringValue).notNull();
         }
 
         if (!dataValidationErrors.isEmpty()) {

@@ -19,12 +19,12 @@
 package org.apache.fineract.portfolio.loanaccount.loanschedule.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalcualtionAdditionalDetails;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePeriodData;
-import org.joda.time.LocalDate;
 
 /**
  * Domain representation of a Loan Schedule Repayment Period (not used for persistence)
@@ -43,6 +43,7 @@ public final class LoanScheduleModelRepaymentPeriod implements LoanScheduleModel
     private final boolean recalculatedInterestComponent;
     private final Set<LoanInterestRecalcualtionAdditionalDetails> loanCompoundingDetails = new HashSet<>();
     private boolean isEMIFixedSpecificToInstallment = false;
+    BigDecimal rescheduleInterestPortion;
 
     public static LoanScheduleModelRepaymentPeriod repayment(final int periodNumber, final LocalDate startDate,
             final LocalDate scheduledDueDate, final Money principalDue, final Money outstandingLoanBalance, final Money interestDue,
@@ -171,5 +172,15 @@ public final class LoanScheduleModelRepaymentPeriod implements LoanScheduleModel
     @Override
     public void setEMIFixedSpecificToInstallmentTrue() {
         this.isEMIFixedSpecificToInstallment = true;
+    }
+
+    @Override
+    public void setRescheduleInterestPortion(BigDecimal rescheduleInterestPortion) {
+        this.rescheduleInterestPortion = rescheduleInterestPortion;
+    }
+
+    @Override
+    public BigDecimal rescheduleInterestPortion() {
+        return this.rescheduleInterestPortion;
     }
 }

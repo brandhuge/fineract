@@ -25,6 +25,8 @@ public interface LoanApiConstants {
     String disbursementDataParameterName = "disbursementData";
     String disbursementDateParameterName = "expectedDisbursementDate";
     String disbursementPrincipalParameterName = "principal";
+    String disbursementReversedParameterName = "reversed";
+    String disbursementNetDisbursalAmountParameterName = "netDisbursalAmount";
     String updatedDisbursementDateParameterName = "updatedExpectedDisbursementDate";
     String updatedDisbursementPrincipalParameterName = "updatedPrincipal";
     String disbursementIdParameterName = "id";
@@ -32,6 +34,7 @@ public interface LoanApiConstants {
     String principalDisbursedParameterName = "transactionAmount";
     String chargesParameterName = "charges";
     String loanIdTobeApproved = "loanId";
+    String postDatedChecks = "postDatedChecks";
 
     String approvedLoanAmountParameterName = "approvedLoanAmount";
     String approvedOnDateParameterName = "approvedOnDate";
@@ -78,6 +81,10 @@ public interface LoanApiConstants {
     String daysInYearTypeParameterName = "daysInYearType";
     String daysInMonthTypeParameterName = "daysInMonthType";
 
+    String MULTIDISBURSE_DETAILS_PARAMNAME = "multiDisburseDetails";
+    String EMI_AMOUNT_VARIATIONS_PARAMNAME = "emiAmountVariations";
+    String COLLECTION_PARAMNAME = "collection";
+
     // Interest recalculation related
     String isInterestRecalculationEnabledParameterName = "isInterestRecalculationEnabled";
     String interestRecalculationCompoundingMethodParameterName = "interestRecalculationCompoundingMethod";
@@ -99,6 +106,7 @@ public interface LoanApiConstants {
     String APPROVED_AMOUNT_IS_LESS_THAN_SUM_OF_TRANCHES = "sum.of.multi.disburse.amounts.must.be.equal.to.or.lesser.than.approved.principal";
     String DISBURSEMENT_DATES_NOT_IN_ORDER = "disbursements.should.be.ordered.based.on.their.disbursement.dates";
     String DISBURSEMENT_DATE_BEFORE_ERROR = "disbursement.date.of.tranche.cannot.be.before.expected.disbursement.date";
+    String LOAN_COLLATERAL_TOTAL_VALUE_SHOULD_BE_SUFFICIENT = "sum.of.multi.collateral.values.must.equal.or.greater.than.principal.amount";
 
     String isFloatingInterestRate = "isFloatingInterestRate";
     String interestRateDifferential = "interestRateDifferential";
@@ -132,4 +140,19 @@ public interface LoanApiConstants {
     String applicationId = "applicationId";
     String lastApplication = "lastApplication";
 
+    String fixedPrincipalPercentagePerInstallmentParamName = "fixedPrincipalPercentagePerInstallment";
+
+    String LOAN_ASSOCIATIONS_ALL = "all";
+
+    // Reversal Transation Data
+    String REVERSAL_EXTERNAL_ID_PARAMNAME = "reversalExternalId";
+    String REVERSED_ON_DATE_PARAMNAME = "reversedOnDate";
+
+    String DISALLOW_EXPECTED_DISBURSEMENTS = "disallowExpectedDisbursements";
+
+    String TRANSACTION_AMOUNT_PARAMNAME = "transactionAmount";
+    String PAYMENT_TYPE_PARAMNAME = "paymentTypeId";
+
+    // Commands
+    String CHARGEBACK_TRANSACTION_COMMAND = "chargeback";
 }

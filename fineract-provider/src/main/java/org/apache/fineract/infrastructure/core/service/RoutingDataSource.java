@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.AbstractDataSource;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
  * of this request.
  */
 @Service(value = "routingDataSource")
+@Primary
 public class RoutingDataSource extends AbstractDataSource {
 
     @Autowired
@@ -46,7 +48,7 @@ public class RoutingDataSource extends AbstractDataSource {
         return determineTargetDataSource().getConnection();
     }
 
-    private DataSource determineTargetDataSource() {
+    public DataSource determineTargetDataSource() {
         return this.dataSourceServiceFactory.determineDataSourceService().retrieveDataSource();
     }
 

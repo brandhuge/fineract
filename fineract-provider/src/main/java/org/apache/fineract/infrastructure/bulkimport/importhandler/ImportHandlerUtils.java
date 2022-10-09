@@ -19,12 +19,14 @@
 package org.apache.fineract.infrastructure.bulkimport.importhandler;
 
 import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
+import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.infrastructure.bulkimport.constants.TemplatePopulateImportConstants;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.exception.AbstractPlatformException;
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
@@ -37,7 +39,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.SheetVisibility;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellReference;
-import org.joda.time.LocalDate;
 
 public final class ImportHandlerUtils {
 
@@ -132,7 +133,7 @@ public final class ImportHandlerUtils {
 
     public static String trimEmptyDecimalPortion(String result) {
         if (result != null && result.endsWith(".0")) {
-            return Iterables.get(Splitter.on("\\.").split(result), 0);
+            return Splitter.on("\\.").split(result).iterator().next();
         } else {
             return result;
         }
@@ -144,7 +145,7 @@ public final class ImportHandlerUtils {
             return null;
         }
 
-        LocalDate localDate = new LocalDate(c.getDateCellValue());
+        LocalDate localDate = LocalDate.ofInstant(c.getDateCellValue().toInstant(), DateUtils.getDateTimeZoneOfTenant());
         return localDate;
     }
 
@@ -303,6 +304,7 @@ public final class ImportHandlerUtils {
                             if (sheetName.equals(TemplatePopulateImportConstants.OFFICE_SHEET_NAME)
                                     || sheetName.equals(TemplatePopulateImportConstants.GL_ACCOUNTS_SHEET_NAME)
                                     || sheetName.equals(TemplatePopulateImportConstants.EXTRAS_SHEET_NAME)
+                                    || sheetName.equals(TemplatePopulateImportConstants.CHARGE_SHEET_NAME)
                                     || sheetName.equals(TemplatePopulateImportConstants.SHARED_PRODUCTS_SHEET_NAME)
                                     || sheetName.equals(TemplatePopulateImportConstants.ROLES_SHEET_NAME)) {
                                 if (row.getCell(cell.getColumnIndex() - 1).getCellType() == CellType.NUMERIC) {
@@ -324,7 +326,7 @@ public final class ImportHandlerUtils {
                     }
                 }
             }
-        } else if (sheetName.equals(TemplatePopulateImportConstants.PRODUCT_SHEET_NAME)) {
+        } else {
             for (Row row : sheet) {
                 for (int i = 0; i < 2; i++) {
                     if (name != null) {
@@ -341,10 +343,51 @@ public final class ImportHandlerUtils {
         return 0L;
     }
 
+    public static EnumOptionData getChargeTimeTypeEmun(Sheet sheet, String name) {
+        String sheetName = sheet.getSheetName();
+        String chargeTimeType = "";
+        EnumOptionData chargeTimeTypeEnum = null;
+        if (sheetName.equals(TemplatePopulateImportConstants.CHARGE_SHEET_NAME)) {
+            for (Row row : sheet) {
+                for (Cell cell : row) {
+                    if (name != null) {
+                        if (cell.getCellType() == CellType.STRING && cell.getRichStringCellValue().getString().trim().equals(name)) {
+                            chargeTimeType = row.getCell(cell.getColumnIndex() + 3).getStringCellValue().toString();
+
+                        }
+                    }
+                }
+            }
+        }
+        if (!chargeTimeType.equals("")) {
+            String chargeTimeTypeId = "";
+            if (chargeTimeType.equalsIgnoreCase("Disbursement")) {
+                chargeTimeTypeId = "1";
+            }
+            chargeTimeTypeEnum = new EnumOptionData(null, null, chargeTimeTypeId);
+        }
+        return chargeTimeTypeEnum;
+    }
+
+    public static EnumOptionData getChargeAmountTypeEnum(final String chargeAmountType) {
+        EnumOptionData chargeAmountTypeEnum = null;
+        if (chargeAmountType != null) {
+            String chargeAmountTypeId = "";
+            if (chargeAmountType.equalsIgnoreCase("Flat")) {
+                chargeAmountTypeId = "1";
+            } else if (chargeAmountType.equalsIgnoreCase("% Amount")) {
+                chargeAmountTypeId = "2";
+            } else {
+                chargeAmountTypeId = chargeAmountType;
+            }
+            chargeAmountTypeEnum = new EnumOptionData(null, null, chargeAmountTypeId);
+        }
+        return chargeAmountTypeEnum;
+    }
+
     public static String getCodeByName(Sheet sheet, String name) {
         String sheetName = sheet.getSheetName();
-        sheetName.equals(TemplatePopulateImportConstants.EXTRAS_SHEET_NAME);
-        {
+        if (sheetName.equals(TemplatePopulateImportConstants.EXTRAS_SHEET_NAME)) {
             for (Row row : sheet) {
                 for (Cell cell : row) {
                     if (name != null) {

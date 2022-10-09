@@ -19,9 +19,11 @@
 package org.apache.fineract.portfolio.group.data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import lombok.Getter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
@@ -30,23 +32,20 @@ import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.staff.data.StaffData;
 import org.apache.fineract.portfolio.calendar.data.CalendarData;
 import org.apache.fineract.portfolio.client.data.ClientData;
-import org.joda.time.LocalDate;
 
 /**
  * Immutable data object representing a general group (so may or may not have a parent).
  */
+@Getter
 public class GroupGeneralData implements Serializable {
 
     private final Long id;
     private final String accountNo;
     private final String name;
     private final String externalId;
-
     private final EnumOptionData status;
-    @SuppressWarnings("unused")
     private final Boolean active;
     private final LocalDate activationDate;
-
     private final Long officeId;
     private final String officeName;
     private final Long centerId;
@@ -112,6 +111,37 @@ public class GroupGeneralData implements Serializable {
         this.staffName = null;
         this.hierarchy = null;
         this.groupLevel = null;
+        this.activeClientMembers = null;
+        this.groupRoles = null;
+        this.calendarsData = null;
+        this.collectionMeetingCalendar = null;
+        this.centerOptions = null;
+        this.officeOptions = null;
+        this.staffOptions = null;
+        this.clientOptions = null;
+        this.availableRoles = null;
+        this.selectedRole = null;
+        this.closureReasons = null;
+        this.timeline = null;
+    }
+
+    public GroupGeneralData(Long id, Long officeId) {
+        this.id = id;
+        this.accountNo = null;
+        this.name = null;
+        this.externalId = null;
+        this.status = null;
+        this.active = null;
+        this.activationDate = null;
+        this.officeId = officeId;
+        this.officeName = null;
+        this.centerId = null;
+        this.centerName = null;
+        this.staffId = null;
+        this.staffName = null;
+        this.hierarchy = null;
+        this.groupLevel = null;
+        this.clientMembers = null;
         this.activeClientMembers = null;
         this.groupRoles = null;
         this.calendarsData = null;

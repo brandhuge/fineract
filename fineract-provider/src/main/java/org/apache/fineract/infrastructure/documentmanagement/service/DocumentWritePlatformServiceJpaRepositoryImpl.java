@@ -77,7 +77,7 @@ public class DocumentWritePlatformServiceJpaRepositoryImpl implements DocumentWr
                     documentCommand.getName(), documentCommand.getFileName(), documentCommand.getSize(), documentCommand.getType(),
                     documentCommand.getDescription(), fileLocation, contentRepository.getStorageType());
 
-            this.documentRepository.save(document);
+            this.documentRepository.saveAndFlush(document);
 
             return document.getId();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
@@ -128,7 +128,7 @@ public class DocumentWritePlatformServiceJpaRepositoryImpl implements DocumentWr
 
             if (inputStream != null && documentCommand.isFileNameChanged()) {
                 final ContentRepository contentRepository = this.contentRepositoryFactory.getRepository(documentStoreType);
-                contentRepository.deleteFile(documentCommand.getName(), oldLocation);
+                contentRepository.deleteFile(oldLocation);
             }
 
             this.documentRepository.saveAndFlush(documentForUpdate);
@@ -157,7 +157,7 @@ public class DocumentWritePlatformServiceJpaRepositoryImpl implements DocumentWr
         this.documentRepository.delete(document);
 
         final ContentRepository contentRepository = this.contentRepositoryFactory.getRepository(document.storageType());
-        contentRepository.deleteFile(document.getName(), document.getLocation());
+        contentRepository.deleteFile(document.getLocation());
         return new CommandProcessingResult(document.getId());
     }
 

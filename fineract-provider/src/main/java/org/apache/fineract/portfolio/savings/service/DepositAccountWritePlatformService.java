@@ -18,15 +18,14 @@
  */
 package org.apache.fineract.portfolio.savings.service;
 
+import java.time.LocalDate;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
-import org.joda.time.LocalDate;
 
 public interface DepositAccountWritePlatformService {
 
@@ -86,8 +85,6 @@ public interface DepositAccountWritePlatformService {
     void applyChargeDue(Long savingsAccountChargeId, Long accountId, DepositAccountType depositAccountType);
 
     void updateMaturityDetails(Long depositAccountId, DepositAccountType depositAccountType);
-
-    void transferInterestToSavings() throws JobExecutionException;
 
     SavingsAccountTransaction mandatorySavingsAccountDeposit(SavingsAccountTransactionDTO accountTransactionDTO);
 }

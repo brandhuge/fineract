@@ -23,6 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -38,17 +39,20 @@ import org.apache.fineract.infrastructure.bulkimport.importhandler.helper.DateSe
 import org.apache.fineract.infrastructure.bulkimport.importhandler.helper.EnumOptionDataValueSerializer;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
+import org.apache.fineract.infrastructure.core.serialization.GoogleGsonSerializerHelper;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanAccountData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanApprovalData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargeData;
+import org.apache.fineract.portfolio.loanaccount.data.LoanCollateralManagementData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionData;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidAmountOfCollateralQuantity;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.joda.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -172,19 +176,21 @@ public class LoanImportHandler implements ImportHandler {
                 repaidEveryFrequencyId = "1";
             } else if (repaidEveryFrequency.equalsIgnoreCase("Months")) {
                 repaidEveryFrequencyId = "2";
+            } else if (repaidEveryFrequency.equalsIgnoreCase("Semi Month")) {
+                repaidEveryFrequencyId = "5";
             }
             repaidEveryFrequencyEnums = new EnumOptionData(null, null, repaidEveryFrequencyId);
         }
         Integer loanTerm = ImportHandlerUtils.readAsInt(LoanConstants.LOAN_TERM_COL, row);
-        String loanTermFrequency = ImportHandlerUtils.readAsString(LoanConstants.LOAN_TERM_FREQUENCY_COL, row);
+        String loanTermFrequencyType = ImportHandlerUtils.readAsString(LoanConstants.LOAN_TERM_FREQUENCY_COL, row);
         EnumOptionData loanTermFrequencyEnum = null;
-        if (loanTermFrequency != null) {
+        if (loanTermFrequencyType != null) {
             String loanTermFrequencyId = "";
-            if (loanTermFrequency.equalsIgnoreCase("Days")) {
+            if (loanTermFrequencyType.equalsIgnoreCase("Days")) {
                 loanTermFrequencyId = "0";
-            } else if (loanTermFrequency.equalsIgnoreCase("Weeks")) {
+            } else if (loanTermFrequencyType.equalsIgnoreCase("Weeks")) {
                 loanTermFrequencyId = "1";
-            } else if (loanTermFrequency.equalsIgnoreCase("Months")) {
+            } else if (loanTermFrequencyType.equalsIgnoreCase("Months")) {
                 loanTermFrequencyId = "2";
             }
             loanTermFrequencyEnum = new EnumOptionData(null, null, loanTermFrequencyId);
@@ -267,35 +273,84 @@ public class LoanImportHandler implements ImportHandler {
 
         List<LoanChargeData> charges = new ArrayList<>();
 
-        Long charge1 = ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_1, row);
-        Long charge2 = ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_2, row);
+        String chargeOneName = ImportHandlerUtils.readAsString(LoanConstants.CHARGE_NAME_1, row);
+        String chargeTwoName = ImportHandlerUtils.readAsString(LoanConstants.CHARGE_NAME_2, row);
+
+        Long chargeOneId = null;
+        if (chargeOneName != null) {
+            chargeOneId = ImportHandlerUtils.getIdByName(workbook.getSheet(TemplatePopulateImportConstants.CHARGE_SHEET_NAME),
+                    chargeOneName);
+        }
+        Long chargeTwoId = null;
+        if (chargeTwoName != null) {
+            chargeTwoId = ImportHandlerUtils.getIdByName(workbook.getSheet(TemplatePopulateImportConstants.CHARGE_SHEET_NAME),
+                    chargeTwoName);
+        }
+
+        Long collateralId = ImportHandlerUtils.readAsLong(LoanConstants.LOAN_COLLATERAL_ID, row);
 
         Long groupId = ImportHandlerUtils.readAsLong(LoanConstants.GROUP_ID, row);
 
         String linkAccountId = ImportHandlerUtils.readAsString(LoanConstants.LINK_ACCOUNT_ID, row);
 
-        if (charge1 != null) {
+        if (chargeOneId != null) {
             if (ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_1, row) != null) {
-                charges.add(new LoanChargeData(ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_1, row),
-                        ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_1, row),
-                        BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_1, row))));
+                EnumOptionData chargeOneTimeTypeEnum = ImportHandlerUtils
+                        .getChargeTimeTypeEmun(workbook.getSheet(TemplatePopulateImportConstants.CHARGE_SHEET_NAME), chargeOneName);
+                EnumOptionData chargeOneAmountTypeEnum = ImportHandlerUtils
+                        .getChargeAmountTypeEnum(ImportHandlerUtils.readAsString(LoanConstants.CHARGE_AMOUNT_TYPE_1, row));
+
+                BigDecimal chargeAmount;
+                BigDecimal amountOrPercentage = BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_1, row));
+                if (chargeOneAmountTypeEnum.getValue().equalsIgnoreCase("1")) {
+                    chargeAmount = amountOrPercentage;
+                } else {
+                    chargeAmount = LoanCharge.percentageOf(principal, amountOrPercentage);
+                }
+
+                charges.add(new LoanChargeData(chargeOneId, ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_1, row),
+                        chargeAmount, chargeOneAmountTypeEnum, chargeOneTimeTypeEnum));
             } else {
-                charges.add(new LoanChargeData(ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_1, row),
-                        ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_1, row), null));
+                charges.add(new LoanChargeData(chargeOneId, ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_1, row), null));
             }
         }
 
-        if (charge2 != null) {
+        if (chargeTwoId != null) {
             if (ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_2, row) != null) {
-                charges.add(new LoanChargeData(ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_2, row),
-                        ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_2, row),
-                        BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_2, row))));
+                EnumOptionData chargeTwoTimeTypeEnum = ImportHandlerUtils
+                        .getChargeTimeTypeEmun(workbook.getSheet(TemplatePopulateImportConstants.CHARGE_SHEET_NAME), chargeTwoName);
+                EnumOptionData chargeTwoAmountTypeEnum = ImportHandlerUtils
+                        .getChargeAmountTypeEnum(ImportHandlerUtils.readAsString(LoanConstants.CHARGE_AMOUNT_TYPE_2, row));
+
+                BigDecimal chargeAmount;
+                BigDecimal amountOrPercentage = BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(LoanConstants.CHARGE_AMOUNT_2, row));
+                if (chargeTwoTimeTypeEnum.getValue().equalsIgnoreCase("1")) {
+                    chargeAmount = amountOrPercentage;
+                } else {
+                    chargeAmount = LoanCharge.percentageOf(principal, amountOrPercentage);
+                }
+
+                charges.add(new LoanChargeData(chargeTwoId, ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_2, row),
+                        chargeAmount, chargeTwoAmountTypeEnum, chargeTwoTimeTypeEnum));
             } else {
-                charges.add(new LoanChargeData(ImportHandlerUtils.readAsLong(LoanConstants.CHARGE_ID_2, row),
-                        ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_2, row), null));
+                charges.add(new LoanChargeData(chargeTwoId, ImportHandlerUtils.readAsDate(LoanConstants.CHARGE_DUE_DATE_2, row), null));
             }
         }
+
+        List<LoanCollateralManagementData> loanCollateralManagementData = new ArrayList<>();
+
+        if (collateralId != null) {
+            if (ImportHandlerUtils.readAsDouble(LoanConstants.LOAN_COLLATERAL_QUANTITY, row) != null) {
+                loanCollateralManagementData.add(new LoanCollateralManagementData(collateralId,
+                        BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(LoanConstants.LOAN_COLLATERAL_QUANTITY, row)), null, null,
+                        null));
+            } else {
+                throw new InvalidAmountOfCollateralQuantity(null);
+            }
+        }
+
         statuses.add(status);
+
         if (loanType != null) {
             if (loanType.equals("individual")) {
                 Long clientId = ImportHandlerUtils.getIdByName(workbook.getSheet(TemplatePopulateImportConstants.CLIENT_SHEET_NAME),
@@ -305,7 +360,7 @@ public class LoanImportHandler implements ImportHandler {
                         nominalInterestRate, submittedOnDate, amortizationEnumOption, interestMethodEnum, interestCalculationPeriodEnum,
                         arrearsTolerance, repaymentStrategyId, graceOnPrincipalPayment, graceOnInterestPayment, graceOnInterestCharged,
                         interestChargedFromDate, firstRepaymentOnDate, row.getRowNum(), externalId, null, charges, linkAccountId, locale,
-                        dateFormat);
+                        dateFormat, loanCollateralManagementData);
             } else if (loanType.equals("jlg")) {
                 Long clientId = ImportHandlerUtils.getIdByName(workbook.getSheet(TemplatePopulateImportConstants.CLIENT_SHEET_NAME),
                         clientOrGroupName);
@@ -314,7 +369,7 @@ public class LoanImportHandler implements ImportHandler {
                         nominalInterestRate, submittedOnDate, amortizationEnumOption, interestMethodEnum, interestCalculationPeriodEnum,
                         arrearsTolerance, repaymentStrategyId, graceOnPrincipalPayment, graceOnInterestPayment, graceOnInterestCharged,
                         interestChargedFromDate, firstRepaymentOnDate, row.getRowNum(), externalId, groupId, charges, linkAccountId, locale,
-                        dateFormat);
+                        dateFormat, null);
             } else {
                 Long groupIdforGroupLoan = ImportHandlerUtils
                         .getIdByName(workbook.getSheet(TemplatePopulateImportConstants.GROUP_SHEET_NAME), clientOrGroupName);
@@ -412,10 +467,11 @@ public class LoanImportHandler implements ImportHandler {
     }
 
     private Integer importLoanRepayment(CommandProcessingResult result, int rowIndex, String dateFormat) {
-        GsonBuilder gsonBuilder = new GsonBuilder();
+        GsonBuilder gsonBuilder = GoogleGsonSerializerHelper.createGsonBuilder();
         gsonBuilder.registerTypeAdapter(LocalDate.class, new DateSerializer(dateFormat));
         JsonObject loanRepaymentJsonob = gsonBuilder.create().toJsonTree(loanRepayments.get(rowIndex)).getAsJsonObject();
         loanRepaymentJsonob.remove("manuallyReversed");
+        loanRepaymentJsonob.remove("numberOfRepayments");
         String payload = loanRepaymentJsonob.toString();
         final CommandWrapper commandRequest = new CommandWrapperBuilder() //
                 .loanRepaymentTransaction(result.getLoanId()) //
@@ -431,7 +487,7 @@ public class LoanImportHandler implements ImportHandler {
 
             DisbursementData disbusalData = disbursalDates.get(rowIndex);
             String linkAccountId = disbusalData.getLinkAccountId();
-            GsonBuilder gsonBuilder = new GsonBuilder();
+            GsonBuilder gsonBuilder = GoogleGsonSerializerHelper.createGsonBuilder();
             gsonBuilder.registerTypeAdapter(LocalDate.class, new DateSerializer(dateFormat));
             if (linkAccountId != null && !"".equals(linkAccountId)) {
                 String payload = gsonBuilder.create().toJson(disbusalData);
@@ -455,7 +511,7 @@ public class LoanImportHandler implements ImportHandler {
 
     private Integer importLoanApproval(CommandProcessingResult result, int rowIndex, String dateFormat) {
         if (approvalDates.get(rowIndex) != null) {
-            GsonBuilder gsonBuilder = new GsonBuilder();
+            GsonBuilder gsonBuilder = GoogleGsonSerializerHelper.createGsonBuilder();
             gsonBuilder.registerTypeAdapter(LocalDate.class, new DateSerializer(dateFormat));
             String payload = gsonBuilder.create().toJson(approvalDates.get(rowIndex));
             final CommandWrapper commandRequest = new CommandWrapperBuilder() //
@@ -469,7 +525,7 @@ public class LoanImportHandler implements ImportHandler {
     }
 
     private CommandProcessingResult importLoan(int rowIndex, String dateFormat) {
-        GsonBuilder gsonBuilder = new GsonBuilder();
+        GsonBuilder gsonBuilder = GoogleGsonSerializerHelper.createGsonBuilder();
         gsonBuilder.registerTypeAdapter(LocalDate.class, new DateSerializer(dateFormat));
         gsonBuilder.registerTypeAdapter(EnumOptionData.class, new EnumOptionDataValueSerializer());
         JsonObject loanJsonOb = gsonBuilder.create().toJsonTree(loans.get(rowIndex)).getAsJsonObject();

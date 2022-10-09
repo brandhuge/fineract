@@ -19,7 +19,8 @@
 package org.apache.fineract.portfolio.savings.domain;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -27,14 +28,12 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.guarantor.domain.GuarantorFundingTransaction;
 import org.apache.fineract.portfolio.savings.DepositAccountOnHoldTransactionType;
-import org.joda.time.LocalDate;
 
 @Entity
 @Table(name = "m_deposit_account_on_hold_transaction")
@@ -50,16 +49,14 @@ public class DepositAccountOnHoldTransaction extends AbstractPersistableCustom {
     @Column(name = "transaction_type_enum", nullable = false)
     private Integer transactionType;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "transaction_date", nullable = false)
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "is_reversed", nullable = false)
     private boolean reversed;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_date", nullable = false)
-    private Date createdDate;
+    private LocalDateTime createdDate;
 
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "depositAccountOnHoldTransaction", optional = true, orphanRemoval = true)
     private GuarantorFundingTransaction guarantorFundingTransaction;
@@ -71,8 +68,8 @@ public class DepositAccountOnHoldTransaction extends AbstractPersistableCustom {
         this.savingsAccount = savingsAccount;
         this.amount = amount;
         this.transactionType = transactionType.getValue();
-        this.transactionDate = transactionDate.toDate();
-        this.createdDate = new Date();
+        this.transactionDate = transactionDate;
+        this.createdDate = DateUtils.getLocalDateTimeOfSystem();
         this.reversed = reversed;
     }
 
@@ -112,11 +109,7 @@ public class DepositAccountOnHoldTransaction extends AbstractPersistableCustom {
     }
 
     public LocalDate getTransactionDate() {
-        LocalDate transactionDate = null;
-        if (this.transactionDate != null) {
-            transactionDate = LocalDate.fromDateFields(this.transactionDate);
-        }
-        return transactionDate;
+        return this.transactionDate;
     }
 
 }

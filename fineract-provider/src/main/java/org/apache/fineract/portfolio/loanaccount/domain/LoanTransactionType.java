@@ -34,6 +34,7 @@ public enum LoanTransactionType {
      */
     RECOVERY_REPAYMENT(8, "loanTransactionType.recoveryRepayment"), //
     WAIVE_CHARGES(9, "loanTransactionType.waiveCharges"), //
+    // UNDO_WAIVE_CHARGE(20, "loanTransactionType.undoWaiveCharge"),
     /**
      * Transaction represents an Accrual (For either interest, charge or a penalty
      **/
@@ -50,7 +51,13 @@ public enum LoanTransactionType {
     REFUND(16, "loanTransactionType.refund"), //
     CHARGE_PAYMENT(17, "loanTransactionType.chargePayment"), //
     REFUND_FOR_ACTIVE_LOAN(18, "loanTransactionType.refund"), //
-    INCOME_POSTING(19, "loanTransactionType.incomePosting");
+    INCOME_POSTING(19, "loanTransactionType.incomePosting"), //
+    CREDIT_BALANCE_REFUND(20, "loanTransactionType.creditBalanceRefund"), //
+    MERCHANT_ISSUED_REFUND(21, "loanTransactionType.merchantIssuedRefund"), //
+    PAYOUT_REFUND(22, "loanTransactionType.payoutRefund"), //
+    GOODWILL_CREDIT(23, "loanTransactionType.goodwillCredit"), //
+    CHARGE_REFUND(24, "loanTransactionType.chargeRefund"), //
+    CHARGEBACK(25, "loanTransactionType.chargeback");
 
     private final Integer value;
     private final String code;
@@ -74,67 +81,33 @@ public enum LoanTransactionType {
             return LoanTransactionType.INVALID;
         }
 
-        LoanTransactionType loanTransactionType = null;
-        switch (transactionType) {
-            case 1:
-                loanTransactionType = LoanTransactionType.DISBURSEMENT;
-            break;
-            case 2:
-                loanTransactionType = LoanTransactionType.REPAYMENT;
-            break;
-            case 3:
-                loanTransactionType = LoanTransactionType.CONTRA;
-            break;
-            case 4:
-                loanTransactionType = LoanTransactionType.WAIVE_INTEREST;
-            break;
-            case 5:
-                loanTransactionType = LoanTransactionType.REPAYMENT_AT_DISBURSEMENT;
-            break;
-            case 6:
-                loanTransactionType = LoanTransactionType.WRITEOFF;
-            break;
-            case 7:
-                loanTransactionType = LoanTransactionType.MARKED_FOR_RESCHEDULING;
-            break;
-            case 8:
-                loanTransactionType = LoanTransactionType.RECOVERY_REPAYMENT;
-            break;
-            case 9:
-                loanTransactionType = LoanTransactionType.WAIVE_CHARGES;
-            break;
-            case 10:
-                loanTransactionType = LoanTransactionType.ACCRUAL;
-            break;
-            case 12:
-                loanTransactionType = LoanTransactionType.INITIATE_TRANSFER;
-            break;
-            case 13:
-                loanTransactionType = LoanTransactionType.APPROVE_TRANSFER;
-            break;
-            case 14:
-                loanTransactionType = LoanTransactionType.WITHDRAW_TRANSFER;
-            break;
-            case 15:
-                loanTransactionType = LoanTransactionType.REJECT_TRANSFER;
-            break;
-            case 16:
-                loanTransactionType = LoanTransactionType.REFUND;
-            break;
-            case 17:
-                loanTransactionType = LoanTransactionType.CHARGE_PAYMENT;
-            break;
-            case 18:
-                loanTransactionType = LoanTransactionType.REFUND_FOR_ACTIVE_LOAN;
-            break;
-            case 19:
-                loanTransactionType = LoanTransactionType.INCOME_POSTING;
-            break;
-            default:
-                loanTransactionType = LoanTransactionType.INVALID;
-            break;
-        }
-        return loanTransactionType;
+        return switch (transactionType) {
+            case 1 -> LoanTransactionType.DISBURSEMENT;
+            case 2 -> LoanTransactionType.REPAYMENT;
+            case 3 -> LoanTransactionType.CONTRA;
+            case 4 -> LoanTransactionType.WAIVE_INTEREST;
+            case 5 -> LoanTransactionType.REPAYMENT_AT_DISBURSEMENT;
+            case 6 -> LoanTransactionType.WRITEOFF;
+            case 7 -> LoanTransactionType.MARKED_FOR_RESCHEDULING;
+            case 8 -> LoanTransactionType.RECOVERY_REPAYMENT;
+            case 9 -> LoanTransactionType.WAIVE_CHARGES;
+            case 10 -> LoanTransactionType.ACCRUAL;
+            case 12 -> LoanTransactionType.INITIATE_TRANSFER;
+            case 13 -> LoanTransactionType.APPROVE_TRANSFER;
+            case 14 -> LoanTransactionType.WITHDRAW_TRANSFER;
+            case 15 -> LoanTransactionType.REJECT_TRANSFER;
+            case 16 -> LoanTransactionType.REFUND;
+            case 17 -> LoanTransactionType.CHARGE_PAYMENT;
+            case 18 -> LoanTransactionType.REFUND_FOR_ACTIVE_LOAN;
+            case 19 -> LoanTransactionType.INCOME_POSTING;
+            case 20 -> LoanTransactionType.CREDIT_BALANCE_REFUND;
+            case 21 -> LoanTransactionType.MERCHANT_ISSUED_REFUND;
+            case 22 -> LoanTransactionType.PAYOUT_REFUND;
+            case 23 -> LoanTransactionType.GOODWILL_CREDIT;
+            case 24 -> LoanTransactionType.CHARGE_REFUND;
+            case 25 -> LoanTransactionType.CHARGEBACK;
+            default -> LoanTransactionType.INVALID;
+        };
     }
 
     public boolean isDisbursement() {
@@ -147,6 +120,26 @@ public enum LoanTransactionType {
 
     public boolean isRepayment() {
         return this.value.equals(LoanTransactionType.REPAYMENT.getValue());
+    }
+
+    public boolean isMerchantIssuedRefund() {
+        return this.value.equals(LoanTransactionType.MERCHANT_ISSUED_REFUND.getValue());
+    }
+
+    public boolean isPayoutRefund() {
+        return this.value.equals(LoanTransactionType.PAYOUT_REFUND.getValue());
+    }
+
+    public boolean isGoodwillCredit() {
+        return this.value.equals(LoanTransactionType.GOODWILL_CREDIT.getValue());
+    }
+
+    public boolean isChargeRefund() {
+        return this.value.equals(LoanTransactionType.CHARGE_REFUND.getValue());
+    }
+
+    public boolean isRepaymentType() {
+        return (isRepayment() || isMerchantIssuedRefund() || isPayoutRefund() || isGoodwillCredit() || isChargeRefund());
     }
 
     public boolean isRecoveryRepayment() {
@@ -180,4 +173,9 @@ public enum LoanTransactionType {
     public boolean isIncomePosting() {
         return this.value.equals(LoanTransactionType.INCOME_POSTING.getValue());
     }
+
+    public boolean isChargeback() {
+        return this.value.equals(LoanTransactionType.CHARGEBACK.getValue());
+    }
+
 }

@@ -19,7 +19,7 @@
 package org.apache.fineract.organisation.teller.domain;
 
 import com.google.common.base.Splitter;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +29,12 @@ import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
-import org.joda.time.LocalDate;
 
 /**
  * Provides the base model for a cashier. Represents a row in the &quot;m_cashiers&quot; database table, with each
@@ -67,13 +64,11 @@ public class Cashier extends AbstractPersistableCustom {
     @Column(name = "description", nullable = true, length = 500)
     private String description;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "start_date", nullable = false)
-    private Date startDate;
+    private LocalDate startDate;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "end_date", nullable = false)
-    private Date endDate;
+    private LocalDate endDate;
 
     @Column(name = "full_day", nullable = true)
     private Boolean isFullDay;
@@ -113,8 +108,8 @@ public class Cashier extends AbstractPersistableCustom {
         this.teller = teller;
         this.staff = staff;
         this.description = description;
-        this.startDate = startDate.toDate();
-        this.endDate = endDate.toDate();
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.isFullDay = isFullDay;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -135,25 +130,23 @@ public class Cashier extends AbstractPersistableCustom {
         }
 
         final String startDateParamName = "startDate";
-        if (command.isChangeInLocalDateParameterNamed(startDateParamName, getStartLocalDate())) {
+        if (command.isChangeInLocalDateParameterNamed(startDateParamName, getStartDate())) {
             final String valueAsInput = command.stringValueOfParameterNamed(startDateParamName);
             actualChanges.put(startDateParamName, valueAsInput);
             actualChanges.put("dateFormat", dateFormatAsInput);
             actualChanges.put("locale", localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(startDateParamName);
-            this.startDate = newValue.toDate();
+            this.startDate = command.localDateValueOfParameterNamed(startDateParamName);
         }
 
         final String endDateParamName = "endDate";
-        if (command.isChangeInLocalDateParameterNamed(endDateParamName, getEndLocalDate())) {
+        if (command.isChangeInLocalDateParameterNamed(endDateParamName, getEndDate())) {
             final String valueAsInput = command.stringValueOfParameterNamed(endDateParamName);
             actualChanges.put(endDateParamName, valueAsInput);
             actualChanges.put("dateFormat", dateFormatAsInput);
             actualChanges.put("locale", localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(endDateParamName);
-            this.endDate = newValue.toDate();
+            this.endDate = command.localDateValueOfParameterNamed(endDateParamName);
         }
 
         final Boolean isFullDay = command.booleanObjectValueOfParameterNamed("isFullDay");
@@ -339,16 +332,8 @@ public class Cashier extends AbstractPersistableCustom {
      *
      * @return the valid from date of this cashier
      */
-    public Date getStartDate() {
+    public LocalDate getStartDate() {
         return startDate;
-    }
-
-    public LocalDate getStartLocalDate() {
-        LocalDate startLocalDate = null;
-        if (this.startDate != null) {
-            startLocalDate = LocalDate.fromDateFields(this.startDate);
-        }
-        return startLocalDate;
     }
 
     /**
@@ -361,7 +346,7 @@ public class Cashier extends AbstractPersistableCustom {
      * @param startDate
      *            validFrom the valid from date of this cashier
      */
-    public void setStartDate(Date startDate) {
+    public void setStartDate(LocalDate startDate) {
         this.startDate = startDate;
     }
 
@@ -374,16 +359,8 @@ public class Cashier extends AbstractPersistableCustom {
      *
      * @return the valid to date of this cashier
      */
-    public Date getEndDate() {
+    public LocalDate getEndDate() {
         return endDate;
-    }
-
-    public LocalDate getEndLocalDate() {
-        LocalDate endLocalDate = null;
-        if (this.endDate != null) {
-            endLocalDate = LocalDate.fromDateFields(this.endDate);
-        }
-        return endLocalDate;
     }
 
     /**
@@ -396,7 +373,7 @@ public class Cashier extends AbstractPersistableCustom {
      * @param endDate
      *            validTo the valid to date of this cashier
      */
-    public void setEndDate(Date endDate) {
+    public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
     }
 

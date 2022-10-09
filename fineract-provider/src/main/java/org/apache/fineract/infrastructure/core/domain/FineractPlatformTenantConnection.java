@@ -18,17 +18,29 @@
  */
 package org.apache.fineract.infrastructure.core.domain;
 
+import java.io.Serializable;
+import java.sql.Connection;
+import javax.sql.DataSource;
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * Holds Tenant's DB server connection connection details.
  */
-public class FineractPlatformTenantConnection {
+public class FineractPlatformTenantConnection implements Serializable {
 
     private final Long connectionId;
     private final String schemaServer;
     private final String schemaServerPort;
+    private final String schemaConnectionParameters;
     private final String schemaUsername;
     private final String schemaPassword;
     private final String schemaName;
+    private final String readOnlySchemaServer;
+    private final String readOnlySchemaServerPort;
+    private final String readOnlySchemaName;
+    private final String readOnlySchemaUsername;
+    private final String readOnlySchemaPassword;
+    private final String readOnlySchemaConnectionParameters;
     private final boolean autoUpdateEnabled;
     private final int initialSize;
     private final long validationInterval;
@@ -47,16 +59,20 @@ public class FineractPlatformTenantConnection {
     private final boolean testOnBorrow;
 
     public FineractPlatformTenantConnection(final Long connectionId, final String schemaName, String schemaServer,
-            final String schemaServerPort, final String schemaUsername, final String schemaPassword, final boolean autoUpdateEnabled,
-            final int initialSize, final long validationInterval, final boolean removeAbandoned, final int removeAbandonedTimeout,
-            final boolean logAbandoned, final int abandonWhenPercentageFull, final int maxActive, final int minIdle, final int maxIdle,
-            final int suspectTimeout, final int timeBetweenEvictionRunsMillis, final int minEvictableIdleTimeMillis,
-            final int maxRetriesOnDeadlock, final int maxIntervalBetweenRetries, final boolean tesOnBorrow) {
+            final String schemaServerPort, final String schemaConnectionParameters, final String schemaUsername,
+            final String schemaPassword, final boolean autoUpdateEnabled, final int initialSize, final long validationInterval,
+            final boolean removeAbandoned, final int removeAbandonedTimeout, final boolean logAbandoned,
+            final int abandonWhenPercentageFull, final int maxActive, final int minIdle, final int maxIdle, final int suspectTimeout,
+            final int timeBetweenEvictionRunsMillis, final int minEvictableIdleTimeMillis, final int maxRetriesOnDeadlock,
+            final int maxIntervalBetweenRetries, final boolean tesOnBorrow, final String readOnlySchemaServer,
+            final String readOnlySchemaServerPort, final String readOnlySchemaName, final String readOnlySchemaUsername,
+            final String readOnlySchemaPassword, final String readOnlySchemaConnectionParameters) {
 
         this.connectionId = connectionId;
         this.schemaName = schemaName;
         this.schemaServer = schemaServer;
         this.schemaServerPort = schemaServerPort;
+        this.schemaConnectionParameters = schemaConnectionParameters;
         this.schemaUsername = schemaUsername;
         this.schemaPassword = schemaPassword;
         this.autoUpdateEnabled = autoUpdateEnabled;
@@ -75,6 +91,12 @@ public class FineractPlatformTenantConnection {
         this.maxRetriesOnDeadlock = maxRetriesOnDeadlock;
         this.maxIntervalBetweenRetries = maxIntervalBetweenRetries;
         this.testOnBorrow = tesOnBorrow;
+        this.readOnlySchemaServer = readOnlySchemaServer;
+        this.readOnlySchemaServerPort = readOnlySchemaServerPort;
+        this.readOnlySchemaName = readOnlySchemaName;
+        this.readOnlySchemaUsername = readOnlySchemaUsername;
+        this.readOnlySchemaPassword = readOnlySchemaPassword;
+        this.readOnlySchemaConnectionParameters = readOnlySchemaConnectionParameters;
     }
 
     public String getSchemaServer() {
@@ -83,6 +105,10 @@ public class FineractPlatformTenantConnection {
 
     public String getSchemaServerPort() {
         return this.schemaServerPort;
+    }
+
+    public String getSchemaConnectionParameters() {
+        return this.schemaConnectionParameters;
     }
 
     public String getSchemaUsername() {
@@ -165,8 +191,57 @@ public class FineractPlatformTenantConnection {
         return schemaName;
     }
 
+    public String getReadOnlySchemaServer() {
+        return readOnlySchemaServer;
+    }
+
+    public String getReadOnlySchemaServerPort() {
+        return readOnlySchemaServerPort;
+    }
+
+    public String getReadOnlySchemaName() {
+        return readOnlySchemaName;
+    }
+
+    public String getReadOnlySchemaUsername() {
+        return readOnlySchemaUsername;
+    }
+
+    public String getReadOnlySchemaPassword() {
+        return readOnlySchemaPassword;
+    }
+
+    public String getReadOnlySchemaConnectionParameters() {
+        return readOnlySchemaConnectionParameters;
+    }
+
     @Override
     public String toString() {
-        return this.schemaName + ":" + this.schemaServer + ":" + this.schemaServerPort;
+        StringBuilder sb = new StringBuilder(this.schemaName).append(":").append(this.schemaServer).append(":")
+                .append(this.schemaServerPort);
+        if (this.schemaConnectionParameters != null && !this.schemaConnectionParameters.isEmpty()) {
+            sb.append('?').append(this.schemaConnectionParameters);
+        }
+        return sb.toString();
     }
+
+    public static String toJdbcUrl(String protocol, String host, String port, String db, String parameters) {
+        StringBuilder sb = new StringBuilder(protocol).append("://").append(host).append(":").append(port).append('/').append(db);
+
+        if (!StringUtils.isEmpty(parameters)) {
+            sb.append('?').append(parameters);
+        }
+
+        return sb.toString();
+    }
+
+    public static String toProtocol(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            String url = connection.getMetaData().getURL();
+            return url.substring(0, url.indexOf("://"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

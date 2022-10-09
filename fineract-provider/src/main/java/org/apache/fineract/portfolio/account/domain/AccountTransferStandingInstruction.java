@@ -32,8 +32,9 @@ import static org.apache.fineract.portfolio.account.api.StandingInstructionApiCo
 import static org.apache.fineract.portfolio.account.api.StandingInstructionApiConstants.validTillParamName;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.MonthDay;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +43,6 @@ import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -51,8 +50,6 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
-import org.joda.time.LocalDate;
-import org.joda.time.MonthDay;
 
 @Entity
 @Table(name = "m_account_transfer_standing_instructions", uniqueConstraints = {
@@ -78,13 +75,11 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
     @Column(name = "amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal amount;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "valid_from")
-    private Date validFrom;
+    private LocalDate validFrom;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "valid_till")
-    private Date validTill;
+    private LocalDate validTill;
 
     @Column(name = "recurrence_type")
     private Integer recurrenceType;
@@ -101,9 +96,8 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
     @Column(name = "recurrence_on_month")
     private Integer recurrenceOnMonth;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "last_run_date")
-    private Date latsRunDate;
+    private LocalDate latsRunDate;
 
     protected AccountTransferStandingInstruction() {
 
@@ -117,7 +111,7 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
         Integer recurrenceOnMonth = null;
         if (recurrenceOnMonthDay != null) {
             recurrenceOnDay = recurrenceOnMonthDay.getDayOfMonth();
-            recurrenceOnMonth = recurrenceOnMonthDay.getMonthOfYear();
+            recurrenceOnMonth = recurrenceOnMonthDay.getMonthValue();
         }
         return new AccountTransferStandingInstruction(accountTransferDetails, name, priority, instructionType, status, amount, validFrom,
                 validTill, recurrenceType, recurrenceFrequency, recurrenceInterval, recurrenceOnDay, recurrenceOnMonth);
@@ -133,14 +127,8 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
         this.instructionType = instructionType;
         this.status = status;
         this.amount = amount;
-        if (validFrom != null) {
-            this.validFrom = validFrom.toDate();
-        }
-        if (validTill == null) {
-            this.validTill = null;
-        } else {
-            this.validTill = validTill.toDate();
-        }
+        this.validFrom = validFrom;
+        this.validTill = validTill;
         this.recurrenceType = recurrenceType;
         this.recurrenceFrequency = recurrenceFrequency;
         this.recurrenceInterval = recurrenceInterval;
@@ -168,15 +156,13 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
         }
 
         if (command.isChangeInDateParameterNamed(validFromParamName, this.validFrom)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(validFromParamName);
-            actualChanges.put(validFromParamName, newValue);
-            this.validFrom = newValue.toDate();
+            this.validFrom = command.localDateValueOfParameterNamed(validFromParamName);
+            actualChanges.put(validFromParamName, this.validFrom);
         }
 
         if (command.isChangeInDateParameterNamed(validTillParamName, this.validTill)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(validTillParamName);
-            actualChanges.put(validTillParamName, newValue);
-            this.validTill = newValue.toDate();
+            this.validTill = command.localDateValueOfParameterNamed(validTillParamName);
+            actualChanges.put(validTillParamName, this.validTill);
         }
 
         if (command.isChangeInBigDecimalParameterNamed(amountParamName, this.amount)) {
@@ -224,7 +210,7 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
                 this.recurrenceOnDay = dayOfMonthValue;
             }
 
-            final Integer monthOfYear = monthDay.getMonthOfYear();
+            final Integer monthOfYear = monthDay.getMonthValue();
             if (!this.recurrenceOnMonth.equals(monthOfYear)) {
                 actualChanges.put(recurrenceOnMonthDayParamName, actualValueEntered);
                 this.recurrenceOnMonth = monthOfYear;
@@ -246,8 +232,7 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
     private void validateDependencies(final DataValidatorBuilder baseDataValidator) {
 
         if (this.validTill != null && this.validFrom != null) {
-            baseDataValidator.reset().parameter(validTillParamName).value(LocalDate.fromDateFields(this.validTill))
-                    .validateDateAfter(LocalDate.fromDateFields(this.validFrom));
+            baseDataValidator.reset().parameter(validTillParamName).value(this.validTill).validateDateAfter(this.validFrom);
         }
 
         if (AccountTransferRecurrenceType.fromInt(recurrenceType).isPeriodicRecurrence()) {
@@ -287,7 +272,7 @@ public class AccountTransferStandingInstruction extends AbstractPersistableCusto
 
     }
 
-    public void updateLatsRunDate(Date latsRunDate) {
+    public void updateLatsRunDate(LocalDate latsRunDate) {
         this.latsRunDate = latsRunDate;
     }
 

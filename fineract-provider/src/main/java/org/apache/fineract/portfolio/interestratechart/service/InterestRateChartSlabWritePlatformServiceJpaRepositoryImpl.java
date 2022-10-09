@@ -25,10 +25,10 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.interestratechart.data.InterestRateChartRepositoryWrapper;
 import org.apache.fineract.portfolio.interestratechart.data.InterestRateChartSlabDataValidator;
-import org.apache.fineract.portfolio.interestratechart.data.InterestRateChartSlabRepository;
+import org.apache.fineract.portfolio.interestratechart.domain.InterestRateChartRepositoryWrapper;
 import org.apache.fineract.portfolio.interestratechart.domain.InterestRateChartSlab;
+import org.apache.fineract.portfolio.interestratechart.domain.InterestRateChartSlabRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +76,7 @@ public class InterestRateChartSlabWritePlatformServiceJpaRepositoryImpl implemen
 
         final InterestRateChartSlab interestRateChartSlab = this.interestRateChartSlabAssembler.assembleFrom(command);
 
-        this.chartSlabRepository.save(interestRateChartSlab);
+        this.chartSlabRepository.saveAndFlush(interestRateChartSlab);
 
         final Long interestRateChartId = interestRateChartSlab.getId();
 

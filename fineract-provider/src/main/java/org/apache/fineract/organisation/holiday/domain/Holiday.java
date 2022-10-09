@@ -28,8 +28,8 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.dateForm
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.localeParamName;
 
 import com.google.gson.JsonArray;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,8 +42,6 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -53,7 +51,6 @@ import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.organisation.holiday.api.HolidayApiConstants;
 import org.apache.fineract.organisation.office.domain.Office;
-import org.joda.time.LocalDate;
 
 @Entity
 @Table(name = "m_holiday", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }, name = "holiday_name") })
@@ -63,16 +60,13 @@ public class Holiday extends AbstractPersistableCustom {
     private String name;
 
     @Column(name = "from_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date fromDate;
+    private LocalDate fromDate;
 
     @Column(name = "to_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date toDate;
+    private LocalDate toDate;
 
     @Column(name = "repayments_rescheduled_to", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date repaymentsRescheduledTo;
+    private LocalDate repaymentsRescheduledTo;
 
     @Column(name = "rescheduling_type", nullable = false)
     private int reschedulingType;
@@ -148,8 +142,7 @@ public class Holiday extends AbstractPersistableCustom {
                 actualChanges.put(fromDateParamName, valueAsInput);
                 actualChanges.put(dateFormatParamName, dateFormatAsInput);
                 actualChanges.put(localeParamName, localeAsInput);
-                final LocalDate newValue = command.localDateValueOfParameterNamed(fromDateParamName);
-                this.fromDate = newValue.toDate();
+                this.fromDate = command.localDateValueOfParameterNamed(fromDateParamName);
             }
 
             if (command.isChangeInLocalDateParameterNamed(toDateParamName, getToDateLocalDate())) {
@@ -158,8 +151,7 @@ public class Holiday extends AbstractPersistableCustom {
                 actualChanges.put(dateFormatParamName, dateFormatAsInput);
                 actualChanges.put(localeParamName, localeAsInput);
 
-                final LocalDate newValue = command.localDateValueOfParameterNamed(toDateParamName);
-                this.toDate = newValue.toDate();
+                this.toDate = command.localDateValueOfParameterNamed(toDateParamName);
             }
 
             if (command.isChangeInLocalDateParameterNamed(repaymentsRescheduledToParamName, getRepaymentsRescheduledToLocalDate())) {
@@ -168,8 +160,7 @@ public class Holiday extends AbstractPersistableCustom {
                 actualChanges.put(dateFormatParamName, dateFormatAsInput);
                 actualChanges.put(localeParamName, localeAsInput);
 
-                final LocalDate newValue = command.localDateValueOfParameterNamed(repaymentsRescheduledToParamName);
-                this.repaymentsRescheduledTo = newValue.toDate();
+                this.repaymentsRescheduledTo = command.localDateValueOfParameterNamed(repaymentsRescheduledToParamName);
             }
 
             if (command.hasParameter(officesParamName)) {
@@ -232,15 +223,15 @@ public class Holiday extends AbstractPersistableCustom {
         }
 
         if (fromDate != null) {
-            this.fromDate = fromDate.toDate();
+            this.fromDate = fromDate;
         }
 
         if (toDate != null) {
-            this.toDate = toDate.toDate();
+            this.toDate = toDate;
         }
 
         if (repaymentsRescheduledTo != null) {
-            this.repaymentsRescheduledTo = repaymentsRescheduledTo.toDate();
+            this.repaymentsRescheduledTo = repaymentsRescheduledTo;
         }
 
         this.status = status;
@@ -261,11 +252,7 @@ public class Holiday extends AbstractPersistableCustom {
     protected Holiday() {}
 
     public LocalDate getRepaymentsRescheduledToLocalDate() {
-        LocalDate repaymentsRescheduledTo = null;
-        if (this.repaymentsRescheduledTo != null) {
-            repaymentsRescheduledTo = new LocalDate(this.repaymentsRescheduledTo);
-        }
-        return repaymentsRescheduledTo;
+        return this.repaymentsRescheduledTo;
     }
 
     public boolean isProcessed() {
@@ -277,19 +264,11 @@ public class Holiday extends AbstractPersistableCustom {
     }
 
     public LocalDate getFromDateLocalDate() {
-        LocalDate fromDate = null;
-        if (this.fromDate != null) {
-            fromDate = new LocalDate(this.fromDate);
-        }
-        return fromDate;
+        return this.fromDate;
     }
 
     public LocalDate getToDateLocalDate() {
-        LocalDate toDate = null;
-        if (this.toDate != null) {
-            toDate = new LocalDate(this.toDate);
-        }
-        return toDate;
+        return this.toDate;
     }
 
     public void processed() {

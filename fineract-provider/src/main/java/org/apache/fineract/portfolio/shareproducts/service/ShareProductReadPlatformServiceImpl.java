@@ -19,13 +19,15 @@
 package org.apache.fineract.portfolio.shareproducts.service;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
 import org.apache.fineract.accounting.common.AccountingEnumerations;
 import org.apache.fineract.accounting.glaccount.data.GLAccountData;
@@ -36,25 +38,25 @@ import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.apache.fineract.portfolio.products.data.ProductData;
 import org.apache.fineract.portfolio.products.exception.ProductNotFoundException;
-import org.apache.fineract.portfolio.products.service.ProductReadPlatformService;
+import org.apache.fineract.portfolio.products.service.ShareProductReadPlatformService;
 import org.apache.fineract.portfolio.shareaccounts.service.SharesEnumerations;
 import org.apache.fineract.portfolio.shareproducts.data.ShareProductData;
 import org.apache.fineract.portfolio.shareproducts.data.ShareProductMarketPriceData;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service(value = "shareReadPlatformService")
-public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformService {
+@RequiredArgsConstructor
+public class ShareProductReadPlatformServiceImpl implements ShareProductReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
     private final CurrencyReadPlatformService currencyReadPlatformService;
@@ -62,21 +64,8 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
     private final ShareProductDropdownReadPlatformService shareProductDropdownReadPlatformService;
     private final AccountingDropdownReadPlatformService accountingDropdownReadPlatformService;
     private final ProductToGLAccountMappingReadPlatformService accountMappingReadPlatformService;
-    private final PaginationHelper<ProductData> shareProductDataPaginationHelper = new PaginationHelper<>();
-
-    @Autowired
-    public ShareProductReadPlatformServiceImpl(final RoutingDataSource dataSource,
-            final CurrencyReadPlatformService currencyReadPlatformService, final ChargeReadPlatformService chargeReadPlatformService,
-            final ShareProductDropdownReadPlatformService shareProductDropdownReadPlatformService,
-            final AccountingDropdownReadPlatformService accountingDropdownReadPlatformService,
-            final ProductToGLAccountMappingReadPlatformService accountMappingReadPlatformService) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-        this.currencyReadPlatformService = currencyReadPlatformService;
-        this.chargeReadPlatformService = chargeReadPlatformService;
-        this.shareProductDropdownReadPlatformService = shareProductDropdownReadPlatformService;
-        this.accountingDropdownReadPlatformService = accountingDropdownReadPlatformService;
-        this.accountMappingReadPlatformService = accountMappingReadPlatformService;
-    }
+    private final PaginationHelper shareProductDataPaginationHelper;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
 
     @Override
     public Page<ProductData> retrieveAllProducts(Integer offSet, Integer limit) {
@@ -84,7 +73,7 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
         final Collection<ChargeData> charges = null;
         ShareProductRowMapper mapper = new ShareProductRowMapper(shareMarketCollection, charges);
         StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("select SQL_CALC_FOUND_ROWS ");
+        sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(mapper.schema());
         if (limit != null) {
             sqlBuilder.append(" limit ").append(limit);
@@ -93,10 +82,8 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
             sqlBuilder.append(" offset ").append(offSet);
         }
 
-        final String sqlCountRows = "SELECT FOUND_ROWS()";
         Object[] whereClauseItemsitems = new Object[] {};
-        return this.shareProductDataPaginationHelper.fetchPage(this.jdbcTemplate, sqlCountRows, sqlBuilder.toString(),
-                whereClauseItemsitems, mapper);
+        return this.shareProductDataPaginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), whereClauseItemsitems, mapper);
     }
 
     @Override
@@ -105,12 +92,12 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
 
         try {
             final String sql1 = "select " + marketRowMapper.schema() + " where marketData.product_id = ?";
-            final Collection<ShareProductMarketPriceData> shareMarketCollection = this.jdbcTemplate.query(sql1, marketRowMapper,
+            final Collection<ShareProductMarketPriceData> shareMarketCollection = this.jdbcTemplate.query(sql1, marketRowMapper, // NOSONAR
                     new Object[] { productId });
             final Collection<ChargeData> charges = this.chargeReadPlatformService.retrieveShareProductCharges(productId);
             ShareProductRowMapper mapper = new ShareProductRowMapper(shareMarketCollection, charges);
             final String sql = "select " + mapper.schema() + " where shareproduct.id = ?";
-            ShareProductData data = (ShareProductData) this.jdbcTemplate.queryForObject(sql, mapper, new Object[] { productId });
+            ShareProductData data = (ShareProductData) this.jdbcTemplate.queryForObject(sql, mapper, new Object[] { productId }); // NOSONAR
 
             if (data.hasAccountingEnabled()) {
                 final Map<String, Object> accountingMappings = this.accountMappingReadPlatformService
@@ -159,7 +146,7 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
     public Collection<ProductData> retrieveAllForLookup() {
         AllShareProductRowMapper mapper = new AllShareProductRowMapper();
         String sql = "select " + mapper.schema();
-        return this.jdbcTemplate.query(sql, mapper, new Object[] {});
+        return this.jdbcTemplate.query(sql, mapper); // NOSONAR
     }
 
     @Override
@@ -192,7 +179,8 @@ public class ShareProductReadPlatformServiceImpl implements ProductReadPlatformS
             final Long id = rs.getLong("id");
             final Date fromDate = rs.getDate("from_date");
             final BigDecimal shareValue = rs.getBigDecimal("share_value");
-            return new ShareProductMarketPriceData(id, fromDate, shareValue);
+            final LocalDate fromLocalDate = fromDate != null ? fromDate.toLocalDate() : null;
+            return new ShareProductMarketPriceData(id, fromLocalDate, shareValue);
         }
 
         public String schema() {

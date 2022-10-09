@@ -27,18 +27,22 @@ import com.google.gson.JsonParser;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.core.domain.FineractContext;
 import org.apache.fineract.infrastructure.hooks.domain.Hook;
 import org.apache.fineract.infrastructure.hooks.domain.HookConfiguration;
-import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.stereotype.Service;
-import retrofit.Callback;
+import retrofit2.Callback;
 
 @Service
+@RequiredArgsConstructor
 public class WebHookProcessor implements HookProcessor {
 
+    private final ProcessorHelper processorHelper;
+
     @Override
-    public void process(final Hook hook, @SuppressWarnings("unused") final AppUser appUser, final String payload, final String entityName,
-            final String actionName, final String tenantIdentifier, final String authToken) {
+    public void process(final Hook hook, final String payload, final String entityName, final String actionName,
+            final FineractContext context) {
 
         final Set<HookConfiguration> config = hook.getHookConfig();
 
@@ -55,29 +59,28 @@ public class WebHookProcessor implements HookProcessor {
             }
         }
 
-        sendRequest(url, contentType, payload, entityName, actionName, tenantIdentifier, authToken);
-
+        sendRequest(url, contentType, payload, entityName, actionName, context);
     }
 
     @SuppressWarnings("unchecked")
     private void sendRequest(final String url, final String contentType, final String payload, final String entityName,
-            final String actionName, final String tenantIdentifier, @SuppressWarnings("unused") final String authToken) {
+            final String actionName, final FineractContext context) {
 
         final String fineractEndpointUrl = System.getProperty("baseUrl");
-        final WebHookService service = ProcessorHelper.createWebHookService(url);
+        final WebHookService service = processorHelper.createWebHookService(url);
 
         @SuppressWarnings("rawtypes")
-        final Callback callback = ProcessorHelper.createCallback(url);
+        final Callback callback = processorHelper.createCallback(url);
 
         if (contentType.equalsIgnoreCase("json") || contentType.contains("json")) {
             final JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
-            service.sendJsonRequest(entityName, actionName, tenantIdentifier, fineractEndpointUrl, json, callback);
+            service.sendJsonRequest(entityName, actionName, context.getTenantContext().getTenantIdentifier(), fineractEndpointUrl, json)
+                    .enqueue(callback);
         } else {
             Map<String, String> map = new HashMap<>();
             map = new Gson().fromJson(payload, map.getClass());
-            service.sendFormRequest(entityName, actionName, tenantIdentifier, fineractEndpointUrl, map, callback);
+            service.sendFormRequest(entityName, actionName, context.getTenantContext().getTenantIdentifier(), fineractEndpointUrl, map)
+                    .enqueue(callback);
         }
-
     }
-
 }

@@ -24,9 +24,7 @@ import java.util.Set;
 
 public final class HookApiConstants {
 
-    private HookApiConstants() {
-
-    }
+    private HookApiConstants() {}
 
     public static final String HOOK_RESOURCE_NAME = "HOOK";
 
@@ -37,6 +35,10 @@ public final class HookApiConstants {
     public static final String isActiveParamName = "isActive";
 
     public static final String webTemplateName = "Web";
+
+    public static final String elasticSearchTemplateName = "Elastic Search";
+
+    public static final String httpSMSTemplateName = "Message Gateway";
 
     public static final String smsTemplateName = "SMS Bridge";
 
@@ -66,10 +68,12 @@ public final class HookApiConstants {
 
     public static final String templateNameParamName = "templateName";
 
-    static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(nameParamName, displayNameParamName,
+    public static final String SMSProviderIdParamName = "SMS Provider Id";
+
+    public static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(nameParamName, displayNameParamName,
             templateIdParamName, isActiveParamName, configParamName, eventsParamName, templateNameParamName));
 
-    static final Set<String> UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(nameParamName, displayNameParamName,
+    public static final Set<String> UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(nameParamName, displayNameParamName,
             templateIdParamName, isActiveParamName, configParamName, eventsParamName, templateNameParamName));
 
 }

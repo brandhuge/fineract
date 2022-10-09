@@ -19,8 +19,8 @@
 package org.apache.fineract.portfolio.loanaccount.data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
-import org.joda.time.LocalDate;
 
 /**
  * Immutable data object representing repayment schedule related information.
@@ -31,6 +31,7 @@ public class RepaymentScheduleRelatedLoanData {
     private final LocalDate actualDisbursementDate;
     private final CurrencyData currency;
     private final BigDecimal principal;
+    private final BigDecimal netDisbursalAmount;
     private final BigDecimal inArrearsTolerance;
     private final BigDecimal totalFeeChargesAtDisbursement;
 
@@ -43,6 +44,7 @@ public class RepaymentScheduleRelatedLoanData {
         this.principal = principal;
         this.inArrearsTolerance = inArrearsTolerance;
         this.totalFeeChargesAtDisbursement = totalFeeChargesAtDisbursement;
+        this.netDisbursalAmount = this.principal.subtract(this.totalFeeChargesAtDisbursement);
     }
 
     public LocalDate disbursementDate() {
@@ -75,7 +77,7 @@ public class RepaymentScheduleRelatedLoanData {
 
     public DisbursementData disbursementData() {
         BigDecimal waivedChargeAmount = null;
-        return new DisbursementData(null, this.expectedDisbursementDate, this.actualDisbursementDate, this.principal, null, null,
-                waivedChargeAmount);
+        return new DisbursementData(null, this.expectedDisbursementDate, this.actualDisbursementDate, this.principal,
+                this.netDisbursalAmount, null, null, waivedChargeAmount);
     }
 }

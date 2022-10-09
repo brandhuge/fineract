@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.organisation.staff.domain;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.persistence.Column;
@@ -27,8 +27,6 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.UniqueConstraint;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -36,7 +34,6 @@ import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.infrastructure.documentmanagement.domain.Image;
 import org.apache.fineract.organisation.office.domain.Office;
-import org.joda.time.LocalDate;
 
 @Entity
 @Table(name = "m_staff", uniqueConstraints = { @UniqueConstraint(columnNames = { "display_name" }, name = "display_name"),
@@ -76,8 +73,7 @@ public class Staff extends AbstractPersistableCustom {
     private boolean active;
 
     @Column(name = "joining_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date joiningDate;
+    private LocalDate joiningDate;
 
     @ManyToOne
     @JoinColumn(name = "organisational_role_parent_staff_id", nullable = true)
@@ -131,9 +127,7 @@ public class Staff extends AbstractPersistableCustom {
         this.loanOfficer = isLoanOfficer;
         this.active = isActive == null ? true : isActive;
         deriveDisplayName(firstname);
-        if (joiningDate != null) {
-            this.joiningDate = joiningDate.toDateTimeAtStartOfDay().toDate();
-        }
+        this.joiningDate = joiningDate;
     }
 
     public EnumOptionData organisationalRoleData() {
@@ -212,8 +206,7 @@ public class Staff extends AbstractPersistableCustom {
         if (command.isChangeInDateParameterNamed(joiningDateParamName, this.joiningDate)) {
             final String valueAsInput = command.stringValueOfParameterNamed(joiningDateParamName);
             actualChanges.put(joiningDateParamName, valueAsInput);
-            final LocalDate newValue = command.localDateValueOfParameterNamed(joiningDateParamName);
-            this.joiningDate = newValue.toDate();
+            this.joiningDate = command.localDateValueOfParameterNamed(joiningDateParamName);
         }
 
         return actualChanges;

@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.infrastructure.gcm.service;
 
+import javax.persistence.EntityExistsException;
 import javax.persistence.PersistenceException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
@@ -27,7 +28,6 @@ import org.apache.fineract.infrastructure.gcm.domain.DeviceRegistrationRepositor
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.apache.openjpa.persistence.EntityExistsException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -93,7 +93,7 @@ public class DeviceRegistrationWritePlatformServiceImpl implements DeviceRegistr
         Client client = this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
         deviceRegistration.setClient(client);
         deviceRegistration.setRegistrationId(registrationId);
-        deviceRegistration.setUpdatedOnDate(DateUtils.getLocalDateTimeOfTenant().toDate());
+        deviceRegistration.setUpdatedOnDate(DateUtils.getLocalDateTimeOfTenant());
         return deviceRegistration;
     }
 

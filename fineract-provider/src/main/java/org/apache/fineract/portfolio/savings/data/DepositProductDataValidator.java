@@ -66,6 +66,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.time.MonthDay;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -85,7 +86,6 @@ import org.apache.fineract.portfolio.savings.SavingsInterestCalculationDaysInYea
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPeriodFrequencyType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
-import org.joda.time.MonthDay;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -395,18 +395,18 @@ public class DepositProductDataValidator {
 
     private void validateChartsData(JsonElement element, DataValidatorBuilder baseDataValidator) {
         if (element.isJsonObject()) {
-            final JsonObject topLevelJsonElement = element.getAsJsonObject();
-            if (topLevelJsonElement.has(chartsParamName) && topLevelJsonElement.get(chartsParamName).isJsonArray()) {
-                final JsonArray array = topLevelJsonElement.get(chartsParamName).getAsJsonArray();
-                for (int i = 0; i < array.size(); i++) {
-                    final JsonObject interestRateChartElement = array.get(i).getAsJsonObject();
-                    final String json = this.fromApiJsonHelper.toJson(interestRateChartElement);
-                    // chart for create
-                    if (!this.fromApiJsonHelper.parameterExists(idParamName, interestRateChartElement)) {
-                        this.chartDataValidator.validateForCreate(json, baseDataValidator);
-                    } else { // chart for update
-                        this.chartDataValidator.validateForUpdate(json, baseDataValidator);
-                    }
+
+            final JsonArray array = this.fromApiJsonHelper.extractJsonArrayNamed(chartsParamName, element);
+            baseDataValidator.reset().parameter(chartsParamName).value(array).notNull().jsonArrayNotEmpty();
+
+            for (int i = 0; i < array.size(); i++) {
+                final JsonObject interestRateChartElement = array.get(i).getAsJsonObject();
+                final String json = this.fromApiJsonHelper.toJson(interestRateChartElement);
+                // chart for create
+                if (!this.fromApiJsonHelper.parameterExists(idParamName, interestRateChartElement)) {
+                    this.chartDataValidator.validateForCreate(json, baseDataValidator);
+                } else { // chart for update
+                    this.chartDataValidator.validateForUpdate(json, baseDataValidator);
                 }
             }
         }

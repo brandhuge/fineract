@@ -27,7 +27,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,12 +36,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import javax.sql.DataSource;
 import javax.ws.rs.core.StreamingOutput;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.dataqueries.data.GenericResultsetData;
 import org.apache.fineract.infrastructure.dataqueries.data.ReportData;
 import org.apache.fineract.infrastructure.dataqueries.data.ReportParameterData;
@@ -51,83 +51,60 @@ import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnHeader
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetRowData;
 import org.apache.fineract.infrastructure.dataqueries.exception.ReportNotFoundException;
 import org.apache.fineract.infrastructure.documentmanagement.contentrepository.FileSystemContentRepository;
-import org.apache.fineract.infrastructure.report.provider.ReportingProcessServiceProvider;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
-import org.apache.fineract.infrastructure.security.utils.SQLInjectionException;
+import org.apache.fineract.infrastructure.security.service.SqlInjectionPreventerService;
+import org.apache.fineract.infrastructure.security.utils.LogParameterEscapeUtil;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.owasp.esapi.ESAPI;
+import org.owasp.esapi.codecs.UnixCodec;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class ReadReportingServiceImpl implements ReadReportingService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ReadReportingServiceImpl.class);
-    private static final String REPORT_NAME_REGEX_PATTERN = "^[a-zA-Z][a-zA-Z0-9\\-_\\s]{0,48}[a-zA-Z0-9]$";
-
     private final JdbcTemplate jdbcTemplate;
-    private final DataSource dataSource;
     private final PlatformSecurityContext context;
     private final GenericDataService genericDataService;
-    private final ReportingProcessServiceProvider reportingProcessServiceProvider;
-    private final ColumnValidator columnValidator;
-
-    @Autowired
-    public ReadReportingServiceImpl(final PlatformSecurityContext context, final RoutingDataSource dataSource,
-            final GenericDataService genericDataService, final ReportingProcessServiceProvider reportingProcessServiceProvider,
-            final ColumnValidator columnValidator) {
-
-        this.context = context;
-        this.dataSource = dataSource;
-        this.jdbcTemplate = new JdbcTemplate(this.dataSource);
-        this.genericDataService = genericDataService;
-        this.reportingProcessServiceProvider = reportingProcessServiceProvider;
-        this.columnValidator = columnValidator;
-    }
+    private final SqlInjectionPreventerService sqlInjectionPreventerService;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
 
     @Override
     public StreamingOutput retrieveReportCSV(final String name, final String type, final Map<String, String> queryParams,
             final boolean isSelfServiceUserReport) {
+        return out -> {
+            try {
 
-        return new StreamingOutput() {
+                final GenericResultsetData result = retrieveGenericResultset(name, type, queryParams, isSelfServiceUserReport);
+                final StringBuilder sb = generateCsvFileBuffer(result);
 
-            @Override
-            public void write(final OutputStream out) {
-                try {
+                final InputStream in = new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
 
-                    final GenericResultsetData result = retrieveGenericResultset(name, type, queryParams, isSelfServiceUserReport);
-                    final StringBuilder sb = generateCsvFileBuffer(result);
+                final byte[] outputByte = new byte[4096];
+                Integer readLen = in.read(outputByte, 0, 4096);
 
-                    final InputStream in = new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
-
-                    final byte[] outputByte = new byte[4096];
-                    Integer readLen = in.read(outputByte, 0, 4096);
-
-                    while (readLen != -1) {
-                        out.write(outputByte, 0, readLen);
-                        readLen = in.read(outputByte, 0, 4096);
-                    }
-                    // in.close();
-                    // out.flush();
-                    // out.close();
-                } catch (final Exception e) {
-                    throw new PlatformDataIntegrityException("error.msg.exception.error", e.getMessage(), e);
+                while (readLen != -1) {
+                    out.write(outputByte, 0, readLen);
+                    readLen = in.read(outputByte, 0, 4096);
                 }
+                // in.close();
+                // out.flush();
+                // out.close();
+            } catch (final Exception e) {
+                throw new PlatformDataIntegrityException("error.msg.exception.error", e.getMessage(), e);
             }
         };
-
     }
 
     private StringBuilder generateCsvFileBuffer(final GenericResultsetData result) {
         final StringBuilder writer = new StringBuilder();
 
         final List<ResultsetColumnHeaderData> columnHeaders = result.getColumnHeaders();
-        LOG.info("NO. of Columns: {}", columnHeaders.size());
+        log.debug("NO. of Columns: {}", columnHeaders.size());
         final Integer chSize = columnHeaders.size();
         for (int i = 0; i < chSize; i++) {
             writer.append('"' + columnHeaders.get(i).getColumnName() + '"');
@@ -138,21 +115,21 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         writer.append('\n');
 
         final List<ResultsetRowData> data = result.getData();
-        List<String> row;
+        List<Object> row;
         Integer rSize;
         // String currCol;
         String currColType;
         String currVal;
         final String doubleQuote = "\"";
         final String twoDoubleQuotes = doubleQuote + doubleQuote;
-        LOG.info("NO. of Rows: {}", data.size());
-        for (int i = 0; i < data.size(); i++) {
-            row = data.get(i).getRow();
+        log.debug("NO. of Rows: {}", data.size());
+        for (ResultsetRowData element : data) {
+            row = element.getRow();
             rSize = row.size();
             for (int j = 0; j < rSize; j++) {
                 // currCol = columnHeaders.get(j).getColumnName();
                 currColType = columnHeaders.get(j).getColumnType();
-                currVal = row.get(j);
+                currVal = (String) row.get(j);
                 if (currVal != null) {
                     if (currColType.equals("DECIMAL") || currColType.equals("DOUBLE") || currColType.equals("BIGINT")
                             || currColType.equals("SMALLINT") || currColType.equals("INT")) {
@@ -177,14 +154,20 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             final boolean isSelfServiceUserReport) {
 
         final long startTime = System.currentTimeMillis();
-        LOG.info("STARTING REPORT: {}   Type: {}", name, type);
+        if (log.isDebugEnabled()) {
+            log.debug("STARTING REPORT: {}   Type: {}", LogParameterEscapeUtil.escapeLogParameter(name),
+                    LogParameterEscapeUtil.escapeLogParameter(type));
+        }
 
         final String sql = getSQLtoRun(name, type, queryParams, isSelfServiceUserReport);
 
         final GenericResultsetData result = this.genericDataService.fillGenericResultSet(sql);
 
         final long elapsed = System.currentTimeMillis() - startTime;
-        LOG.info("FINISHING Report/Request Name: {} - {}     Elapsed Time: {}", new Object[] { name, type, elapsed });
+        if (log.isDebugEnabled()) {
+            log.debug("FINISHING Report/Request Name: {} - {}     Elapsed Time: {}", LogParameterEscapeUtil.escapeLogParameter(name),
+                    type.replaceAll("[\n\r\t]", "_"), elapsed);
+        }
         return result;
     }
 
@@ -207,42 +190,45 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         // (typically used to return report lists containing only reports
         // permitted to be run by the user
         sql = this.genericDataService.replace(sql, "${currentUserId}", currentUser.getId().toString());
-
-        sql = this.genericDataService.replace(sql, "${isSelfServiceUser}", Integer.toString(isSelfServiceUserReport ? 1 : 0));
-
+        sql = this.genericDataService.replace(sql, "${isSelfServiceUser}", Boolean.toString(isSelfServiceUserReport));
+        sql = this.genericDataService.replace(sql, "${currentDate}", sqlGenerator.currentBusinessDate());
+        sql = StringUtils.replaceIgnoreCase(sql, "NOW()", sqlGenerator.currentTenantDateTime());
+        sql = StringUtils.replaceIgnoreCase(sql, "curdate()", sqlGenerator.currentBusinessDate());
+        sql = StringUtils.replaceIgnoreCase(sql, "CURRENT_DATE", sqlGenerator.currentBusinessDate());
         sql = this.genericDataService.wrapSQL(sql);
 
         return sql;
-
     }
 
     private String getSql(final String name, final String type) {
+        final String encodedName = sqlInjectionPreventerService.encodeSql(name);
+        final String encodedType = sqlInjectionPreventerService.encodeSql(type);
 
-        final String inputSql = "select " + type + "_sql as the_sql from stretchy_" + type + " where " + type + "_name = '" + name + "'";
-        validateReportName(name);
+        final String inputSql = "select " + encodedType + "_sql as the_sql from stretchy_" + encodedType + " where " + encodedType
+                + "_name = ?";
 
         final String inputSqlWrapped = this.genericDataService.wrapSQL(inputSql);
 
         // the return statement contains the exact sql required
-        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(inputSqlWrapped);
+        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(inputSqlWrapped, encodedName);
 
         if (rs.next() && rs.getString("the_sql") != null) {
             return rs.getString("the_sql");
         }
-        throw new ReportNotFoundException(name);
+        throw new ReportNotFoundException(encodedName);
     }
 
     @Override
-    public String getReportType(final String reportName, final boolean isSelfServiceUserReport) {
+    public String getReportType(final String reportName, final boolean isSelfServiceUserReport, final boolean isParameterType) {
+        if (isParameterType) {
+            return "Table";
+        }
 
-        final String sql = "SELECT ifnull(report_type,'') as report_type FROM `stretchy_report` where report_name = '" + reportName
-                + "' and self_service_user_report = ?";
-        validateReportName(reportName);
-        this.columnValidator.validateSqlInjection(sql, reportName);
+        final String sql = "SELECT coalesce(report_type,'') AS report_type FROM stretchy_report WHERE report_name = ? AND self_service_user_report = ?";
 
         final String sqlWrapped = this.genericDataService.wrapSQL(sql);
 
-        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(sqlWrapped, new Object[] { isSelfServiceUserReport });
+        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(sqlWrapped, reportName, isSelfServiceUserReport);
 
         if (rs.next()) {
             return rs.getString("report_type");
@@ -266,14 +252,15 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
             final List<ResultsetColumnHeaderData> columnHeaders = result.getColumnHeaders();
             final List<ResultsetRowData> data = result.getData();
-            List<String> row;
+            List<Object> row;
 
-            LOG.info("NO. of Columns: {}", columnHeaders.size());
+            log.debug("NO. of Columns: {}", columnHeaders.size());
             final Integer chSize = columnHeaders.size();
 
             final Document document = new Document(PageSize.B0.rotate());
 
-            PdfWriter.getInstance(document, new FileOutputStream(new File(fileLocation + reportName + ".pdf")));
+            String validatedFileName = ESAPI.encoder().encodeForOS(new UnixCodec(), reportName);
+            PdfWriter.getInstance(document, new FileOutputStream(fileLocation + validatedFileName + ".pdf"));
             document.open();
 
             final PdfPTable table = new PdfPTable(chSize);
@@ -289,13 +276,13 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             Integer rSize;
             String currColType;
             String currVal;
-            LOG.info("NO. of Rows: {}", data.size());
-            for (int i = 0; i < data.size(); i++) {
-                row = data.get(i).getRow();
+            log.debug("NO. of Rows: {}", data.size());
+            for (ResultsetRowData element : data) {
+                row = element.getRow();
                 rSize = row.size();
                 for (int j = 0; j < rSize; j++) {
                     currColType = columnHeaders.get(j).getColumnType();
-                    currVal = row.get(j);
+                    currVal = (String) row.get(j);
                     if (currVal != null) {
                         if (currColType.equals("DECIMAL") || currColType.equals("DOUBLE") || currColType.equals("BIGINT")
                                 || currColType.equals("SMALLINT") || currColType.equals("INT")) {
@@ -312,7 +299,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             document.close();
             return genaratePdf;
         } catch (final Exception e) {
-            LOG.error("error.msg.reporting.error:", e);
+            log.error("error.msg.reporting.error:", e);
             throw new PlatformDataIntegrityException("error.msg.exception.error", e.getMessage(), e);
         }
     }
@@ -338,7 +325,8 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
         final String sql = rm.schema(id);
 
-        final Collection<ReportParameterJoinData> rpJoins = this.jdbcTemplate.query(sql, rm, new Object[] {});
+        final Collection<ReportParameterJoinData> rpJoins = this.jdbcTemplate.query(sql, rm,
+                id != null ? new Object[] { id } : new Object[] {});
 
         final Collection<ReportData> reportList = new ArrayList<>();
         if (rpJoins == null || rpJoins.size() == 0) {
@@ -410,20 +398,10 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
     @Override
     public Collection<ReportParameterData> getAllowedParameters() {
-
         final ReportParameterMapper rm = new ReportParameterMapper();
         final String sql = rm.schema();
-        final Collection<ReportParameterData> parameters = this.jdbcTemplate.query(sql, rm, new Object[] {});
+        final Collection<ReportParameterData> parameters = this.jdbcTemplate.query(sql, rm);
         return parameters;
-    }
-
-    @Override
-    public Collection<String> getAllowedReportTypes() {
-        final List<String> reportTypes = new ArrayList<>();
-        reportTypes.add("Table");
-        reportTypes.add("Chart");
-        reportTypes.addAll(this.reportingProcessServiceProvider.findAllReportingTypes());
-        return reportTypes;
     }
 
     private static final class ReportParameterJoinMapper implements RowMapper<ReportParameterJoinData> {
@@ -441,7 +419,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             sql += " from stretchy_report r" + " left join stretchy_report_parameter rp on rp.report_id = r.id"
                     + " left join stretchy_parameter p on p.id = rp.parameter_id";
             if (reportId != null) {
-                sql += " where r.id = " + reportId;
+                sql += " where r.id = ?";
             } else {
                 sql += " order by r.id, rp.parameter_id";
             }
@@ -460,7 +438,6 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
         @Override
         public ReportParameterJoinData mapRow(final ResultSet rs, final int rowNum) throws SQLException {
-
             final Long reportId = rs.getLong("reportId");
             final String reportName = rs.getString("reportName");
             final String reportType = rs.getString("reportType");
@@ -491,9 +468,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
     private static final class ReportParameterMapper implements RowMapper<ReportParameterData> {
 
         public String schema() {
-
-            return "select p.id as id, p.parameter_name as parameterName from stretchy_parameter p where ifnull(p.special,'') != 'Y' order by p.id";
-
+            return "select p.id as id, p.parameter_name as parameterName from stretchy_parameter p where coalesce(p.special,'') != 'Y' order by p.id";
         }
 
         @Override
@@ -509,25 +484,23 @@ public class ReadReportingServiceImpl implements ReadReportingService {
     @Override
     public GenericResultsetData retrieveGenericResultSetForSmsEmailCampaign(String name, String type, Map<String, String> queryParams) {
         final long startTime = System.currentTimeMillis();
-        LOG.info("STARTING REPORT: {}   Type: {}", name, type);
+        log.debug("STARTING REPORT: {}   Type: {}", name, type);
 
         final String sql = sqlToRunForSmsEmailCampaign(name, type, queryParams);
 
         final GenericResultsetData result = this.genericDataService.fillGenericResultSet(sql);
 
         final long elapsed = System.currentTimeMillis() - startTime;
-        LOG.info("FINISHING Report/Request Name: {} - {}     Elapsed Time: {}", new Object[] { name, type, elapsed });
+        log.debug("FINISHING Report/Request Name: {} - {}     Elapsed Time: {}", name, type, elapsed);
         return result;
     }
 
-    @Override
-    public String sqlToRunForSmsEmailCampaign(final String name, final String type, final Map<String, String> queryParams) {
+    private String sqlToRunForSmsEmailCampaign(final String name, final String type, final Map<String, String> queryParams) {
         String sql = getSql(name, type);
 
         final Set<String> keys = queryParams.keySet();
         for (String key : keys) {
             final String pValue = queryParams.get(key);
-            // LOG.info("(" + key + " : " + pValue + ")");
             key = "${" + key + "}";
             sql = this.genericDataService.replace(sql, key, pValue);
         }
@@ -596,12 +569,5 @@ public class ReadReportingServiceImpl implements ReadReportingService {
          *
          */
         return null;
-    }
-
-    private void validateReportName(final String name) {
-
-        if (!StringUtils.isBlank(name) && !name.matches(REPORT_NAME_REGEX_PATTERN)) {
-            throw new SQLInjectionException();
-        }
     }
 }

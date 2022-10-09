@@ -20,8 +20,6 @@ package org.apache.fineract.infrastructure.survey.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.sql.DataSource;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.dataqueries.api.DataTableApiConstant;
 import org.apache.fineract.infrastructure.dataqueries.data.DatatableData;
 import org.apache.fineract.infrastructure.dataqueries.data.GenericResultsetData;
@@ -33,7 +31,6 @@ import org.apache.fineract.infrastructure.security.utils.SQLInjectionValidator;
 import org.apache.fineract.infrastructure.survey.data.ClientScoresOverview;
 import org.apache.fineract.infrastructure.survey.data.LikelihoodStatus;
 import org.apache.fineract.infrastructure.survey.data.SurveyDataTableData;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -44,17 +41,15 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
 
     private final PlatformSecurityContext context;
     private final JdbcTemplate jdbcTemplate;
-    private final DataSource dataSource;
     private final GenericDataService genericDataService;
     private final ReadWriteNonCoreDataService readWriteNonCoreDataService;
 
     @Autowired
-    public ReadSurveyServiceImpl(final PlatformSecurityContext context, final RoutingDataSource dataSource,
+    public ReadSurveyServiceImpl(final PlatformSecurityContext context, final JdbcTemplate jdbcTemplate,
             final GenericDataService genericDataService, final ReadWriteNonCoreDataService readWriteNonCoreDataService) {
 
         this.context = context;
-        this.dataSource = dataSource;
-        this.jdbcTemplate = new JdbcTemplate(this.dataSource);
+        this.jdbcTemplate = jdbcTemplate;
         this.genericDataService = genericDataService;
         this.readWriteNonCoreDataService = readWriteNonCoreDataService;
     }
@@ -70,12 +65,13 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
         while (rs.next()) {
             final String appTableName = rs.getString("application_table_name");
             final String registeredDatatableName = rs.getString("registered_table_name");
+            final String entitySubType = rs.getString("entity_subtype");
             final boolean enabled = rs.getBoolean("enabled");
             final List<ResultsetColumnHeaderData> columnHeaderData = this.genericDataService
                     .fillResultsetColumnHeaders(registeredDatatableName);
 
-            surveyDataTables.add(
-                    SurveyDataTableData.create(DatatableData.create(appTableName, registeredDatatableName, columnHeaderData), enabled));
+            surveyDataTables.add(SurveyDataTableData
+                    .create(DatatableData.create(appTableName, registeredDatatableName, entitySubType, columnHeaderData), enabled));
         }
 
         return surveyDataTables;
@@ -83,7 +79,7 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
 
     private String retrieveAllSurveySQL(String andClause) {
         // PERMITTED datatables
-        return "select application_table_name, cf.enabled, registered_table_name" + " from x_registered_table "
+        return "select application_table_name, cf.enabled, registered_table_name, entity_subtype" + " from x_registered_table "
                 + " left join c_configuration cf on x_registered_table.registered_table_name = cf.name " + " where exists" + " (select 'f'"
                 + " from m_appuser_role ur " + " join m_role r on r.id = ur.role_id"
                 + " left join m_role_permission rp on rp.role_id = r.id" + " left join m_permission p on p.id = rp.permission_id"
@@ -96,26 +92,26 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
     @Override
     public SurveyDataTableData retrieveSurvey(String surveyName) {
         SQLInjectionValidator.validateSQLInput(surveyName);
-        final String sql = "select cf.enabled, application_table_name, registered_table_name" + " from x_registered_table "
+        final String sql = "select cf.enabled, application_table_name, registered_table_name, entity_subtype" + " from x_registered_table "
                 + " left join c_configuration cf on x_registered_table.registered_table_name = cf.name " + " where exists" + " (select 'f'"
                 + " from m_appuser_role ur " + " join m_role r on r.id = ur.role_id"
                 + " left join m_role_permission rp on rp.role_id = r.id" + " left join m_permission p on p.id = rp.permission_id"
-                + " where ur.appuser_id = " + this.context.authenticatedUser().getId() + " and registered_table_name='" + surveyName + "'"
+                + " where ur.appuser_id = ? and registered_table_name=?"
                 + " and (p.code in ('ALL_FUNCTIONS', 'ALL_FUNCTIONS_READ') or p.code = concat('READ_', registered_table_name))) "
                 + " order by application_table_name, registered_table_name";
 
-        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(sql);
-
         SurveyDataTableData datatableData = null;
-        while (rs.next()) {
+
+        final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(sql, new Object[] { this.context.authenticatedUser().getId(), surveyName }); // NOSONAR
+        if (rs.next()) {
             final String appTableName = rs.getString("application_table_name");
             final String registeredDatatableName = rs.getString("registered_table_name");
+            final String entitySubType = rs.getString("entity_subtype");
             final boolean enabled = rs.getBoolean("enabled");
             final List<ResultsetColumnHeaderData> columnHeaderData = this.genericDataService
                     .fillResultsetColumnHeaders(registeredDatatableName);
-
-            datatableData = SurveyDataTableData.create(DatatableData.create(appTableName, registeredDatatableName, columnHeaderData),
-                    enabled);
+            datatableData = SurveyDataTableData
+                    .create(DatatableData.create(appTableName, registeredDatatableName, entitySubType, columnHeaderData), enabled);
 
         }
 
@@ -138,7 +134,7 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
 
         while (rs.next()) {
             scoresOverviews.add(new ClientScoresOverview(rs.getString("code"), rs.getString("name"), rs.getLong("score"),
-                    rs.getDouble("poverty_line"), new LocalDate(rs.getTimestamp("date").getTime()), rs.getLong("id"), surveyName));
+                    rs.getDouble("poverty_line"), rs.getDate("date").toLocalDate(), rs.getLong("id"), surveyName));
         }
 
         return scoresOverviews;
@@ -167,8 +163,7 @@ public class ReadSurveyServiceImpl implements ReadSurveyService {
 
             while (rs.next()) {
                 scoresOverviews.add(new ClientScoresOverview(rs.getString("code"), rs.getString("name"), rs.getLong("score"),
-                        rs.getDouble("poverty_line"), new LocalDate(rs.getTimestamp("date").getTime()), rs.getLong("id"),
-                        rs.getString("surveyName")));
+                        rs.getDouble("poverty_line"), rs.getDate("date").toLocalDate(), rs.getLong("id"), rs.getString("surveyName")));
             }
 
         }

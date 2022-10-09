@@ -32,20 +32,20 @@ import static org.apache.fineract.interoperation.util.InteropUtil.PARAM_TRANSACT
 import static org.apache.fineract.interoperation.util.InteropUtil.PARAM_TRANSACTION_ROLE;
 import static org.apache.fineract.interoperation.util.InteropUtil.PARAM_TRANSACTION_TYPE;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import javax.validation.constraints.NotNull;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.interoperation.domain.InteropTransactionRole;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
-import org.codehaus.jackson.map.annotate.JsonDeserialize;
-import org.codehaus.jackson.map.ext.JodaDeserializers;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 
 public class InteropRequestData {
 
@@ -66,7 +66,7 @@ public class InteropRequestData {
 
     private GeoCodeData geoCode;
 
-    @JsonDeserialize(using = JodaDeserializers.LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime expiration;
 
     private List<ExtensionData> extensionList;
@@ -193,12 +193,12 @@ public class InteropRequestData {
 
         String locale = jsonHelper.extractStringNamed(PARAM_LOCALE, element);
         LocalDateTime expiration = locale == null
-                ? jsonHelper.extractLocalTimeNamed(PARAM_EXPIRATION, element, ISO8601_DATE_TIME_FORMAT, DEFAULT_LOCALE)
-                : jsonHelper.extractLocalTimeNamed(PARAM_EXPIRATION, element); // PARAM_DATE_FORMAT
-                                                                               // also
-                                                                               // must
-                                                                               // be
-                                                                               // set
+                ? jsonHelper.extractLocalDateTimeNamed(PARAM_EXPIRATION, element, ISO8601_DATE_TIME_FORMAT, DEFAULT_LOCALE)
+                : jsonHelper.extractLocalDateTimeNamed(PARAM_EXPIRATION, element); // PARAM_DATE_FORMAT
+        // also
+        // must
+        // be
+        // set
 
         JsonArray extensionArray = jsonHelper.extractJsonArrayNamed(PARAM_EXTENSION_LIST, element);
         ArrayList<ExtensionData> extensionList = null;

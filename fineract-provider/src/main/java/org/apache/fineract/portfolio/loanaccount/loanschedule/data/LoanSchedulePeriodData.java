@@ -19,13 +19,16 @@
 package org.apache.fineract.portfolio.loanaccount.loanschedule.data;
 
 import java.math.BigDecimal;
-import org.joda.time.Days;
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import lombok.Getter;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 
 /**
  * Immutable data object that represents a period of a loan schedule.
  *
  */
+@Getter
 public final class LoanSchedulePeriodData {
 
     private final Integer period;
@@ -41,7 +44,6 @@ public final class LoanSchedulePeriodData {
     private final BigDecimal principalWrittenOff;
     private final BigDecimal principalOutstanding;
     private final BigDecimal principalLoanBalanceOutstanding;
-    @SuppressWarnings("unused")
     private final BigDecimal interestOriginalDue;
     private final BigDecimal interestDue;
     private final BigDecimal interestPaid;
@@ -58,8 +60,6 @@ public final class LoanSchedulePeriodData {
     private final BigDecimal penaltyChargesWaived;
     private final BigDecimal penaltyChargesWrittenOff;
     private final BigDecimal penaltyChargesOutstanding;
-
-    @SuppressWarnings("unused")
     private final BigDecimal totalOriginalDueForPeriod;
     private final BigDecimal totalDueForPeriod;
     private final BigDecimal totalPaidForPeriod;
@@ -144,7 +144,7 @@ public final class LoanSchedulePeriodData {
         this.obligationsMetOnDate = null;
         this.complete = null;
         if (fromDate != null) {
-            this.daysInPeriod = Days.daysBetween(this.fromDate, this.dueDate).getDays();
+            this.daysInPeriod = Math.toIntExact(ChronoUnit.DAYS.between(this.fromDate, this.dueDate));
         } else {
             this.daysInPeriod = null;
         }
@@ -192,7 +192,7 @@ public final class LoanSchedulePeriodData {
         this.totalOutstandingForPeriod = this.feeChargesOutstanding;
         this.totalActualCostOfLoanForPeriod = this.feeChargesDue;
         this.totalInstallmentAmountForPeriod = null;
-        if (dueDate.isBefore(new LocalDate())) {
+        if (dueDate.isBefore(DateUtils.getBusinessLocalDate())) {
             this.totalOverdue = this.totalOutstandingForPeriod;
         } else {
             this.totalOverdue = null;
@@ -212,7 +212,7 @@ public final class LoanSchedulePeriodData {
         this.obligationsMetOnDate = null;
         this.complete = null;
         if (fromDate != null) {
-            this.daysInPeriod = Days.daysBetween(this.fromDate, this.dueDate).getDays();
+            this.daysInPeriod = Math.toIntExact(ChronoUnit.DAYS.between(this.fromDate, this.dueDate));
         } else {
             this.daysInPeriod = null;
         }
@@ -254,7 +254,7 @@ public final class LoanSchedulePeriodData {
         this.totalActualCostOfLoanForPeriod = interestDueOnPrincipalOutstanding.add(feeChargesDueForPeriod);
         this.totalInstallmentAmountForPeriod = totalInstallmentAmountForPeriod;
 
-        if (dueDate.isBefore(new LocalDate())) {
+        if (dueDate.isBefore(DateUtils.getBusinessLocalDate())) {
             this.totalOverdue = this.totalOutstandingForPeriod;
         } else {
             this.totalOverdue = null;
@@ -283,7 +283,7 @@ public final class LoanSchedulePeriodData {
         this.obligationsMetOnDate = obligationsMetOnDate;
         this.complete = complete;
         if (fromDate != null) {
-            this.daysInPeriod = Days.daysBetween(this.fromDate, this.dueDate).getDays();
+            this.daysInPeriod = Math.toIntExact(ChronoUnit.DAYS.between(this.fromDate, this.dueDate));
         } else {
             this.daysInPeriod = null;
         }
@@ -325,7 +325,7 @@ public final class LoanSchedulePeriodData {
         this.totalActualCostOfLoanForPeriod = totalActualCostOfLoanForPeriod;
         this.totalInstallmentAmountForPeriod = totalInstallmentAmountForPeriod;
 
-        if (dueDate.isBefore(new LocalDate())) {
+        if (dueDate.isBefore(DateUtils.getBusinessLocalDate())) {
             this.totalOverdue = this.totalOutstandingForPeriod;
         } else {
             this.totalOverdue = null;
@@ -340,111 +340,91 @@ public final class LoanSchedulePeriodData {
         return value;
     }
 
-    public Integer periodNumber() {
-        return this.period;
-    }
-
-    public LocalDate periodFromDate() {
-        return this.fromDate;
-    }
-
-    public LocalDate periodDueDate() {
-        return this.dueDate;
-    }
-
-    public Integer daysInPeriod() {
-        return this.daysInPeriod;
-    }
-
-    public BigDecimal principalDisbursed() {
+    public BigDecimal getPrincipalDisbursed() {
         return defaultToZeroIfNull(this.principalDisbursed);
     }
 
-    public BigDecimal principalDue() {
+    public BigDecimal getPrincipalDue() {
         return defaultToZeroIfNull(this.principalDue);
     }
 
-    public BigDecimal principalPaid() {
+    public BigDecimal getPrincipalPaid() {
         return defaultToZeroIfNull(this.principalPaid);
     }
 
-    public BigDecimal principalWrittenOff() {
+    public BigDecimal getPrincipalWrittenOff() {
         return defaultToZeroIfNull(this.principalWrittenOff);
     }
 
-    public BigDecimal principalOutstanding() {
+    public BigDecimal getPrincipalOutstanding() {
         return defaultToZeroIfNull(this.principalOutstanding);
     }
 
-    public BigDecimal interestDue() {
+    public BigDecimal getInterestDue() {
         return defaultToZeroIfNull(this.interestDue);
     }
 
-    public BigDecimal interestPaid() {
+    public BigDecimal getInterestPaid() {
         return defaultToZeroIfNull(this.interestPaid);
     }
 
-    public BigDecimal interestWaived() {
+    public BigDecimal getInterestWaived() {
         return defaultToZeroIfNull(this.interestWaived);
     }
 
-    public BigDecimal interestWrittenOff() {
+    public BigDecimal getInterestWrittenOff() {
         return defaultToZeroIfNull(this.interestWrittenOff);
     }
 
-    public BigDecimal interestOutstanding() {
+    public BigDecimal getInterestOutstanding() {
         return defaultToZeroIfNull(this.interestOutstanding);
     }
 
-    public BigDecimal feeChargesDue() {
+    public BigDecimal getFeeChargesDue() {
         return defaultToZeroIfNull(this.feeChargesDue);
     }
 
-    public BigDecimal feeChargesWaived() {
+    public BigDecimal getFeeChargesWaived() {
         return defaultToZeroIfNull(this.feeChargesWaived);
     }
 
-    public BigDecimal feeChargesWrittenOff() {
+    public BigDecimal getFeeChargesWrittenOff() {
         return defaultToZeroIfNull(this.feeChargesWrittenOff);
     }
 
-    public BigDecimal feeChargesPaid() {
+    public BigDecimal getFeeChargesPaid() {
         return defaultToZeroIfNull(this.feeChargesPaid);
     }
 
-    public BigDecimal feeChargesOutstanding() {
+    public BigDecimal getFeeChargesOutstanding() {
         return defaultToZeroIfNull(this.feeChargesOutstanding);
     }
 
-    public BigDecimal penaltyChargesDue() {
+    public BigDecimal getPenaltyChargesDue() {
         return defaultToZeroIfNull(this.penaltyChargesDue);
     }
 
-    public BigDecimal penaltyChargesWaived() {
+    public BigDecimal getPenaltyChargesWaived() {
         return defaultToZeroIfNull(this.penaltyChargesWaived);
     }
 
-    public BigDecimal penaltyChargesWrittenOff() {
+    public BigDecimal getPenaltyChargesWrittenOff() {
         return defaultToZeroIfNull(this.penaltyChargesWrittenOff);
     }
 
-    public BigDecimal penaltyChargesPaid() {
+    public BigDecimal getPenaltyChargesPaid() {
         return defaultToZeroIfNull(this.penaltyChargesPaid);
     }
 
-    public BigDecimal penaltyChargesOutstanding() {
+    public BigDecimal getPenaltyChargesOutstanding() {
         return defaultToZeroIfNull(this.penaltyChargesOutstanding);
     }
 
-    public BigDecimal totalOverdue() {
+    public BigDecimal getTotalOverdue() {
         return defaultToZeroIfNull(this.totalOverdue);
     }
 
-    public BigDecimal principalLoanBalanceOutstanding() {
-        return this.principalLoanBalanceOutstanding;
-    }
-
-    public Boolean getComplete() {
-        return this.complete;
+    public BigDecimal totalOutstandingForPeriod() {
+        return defaultToZeroIfNull(this.totalOutstandingForPeriod);
     }
 }

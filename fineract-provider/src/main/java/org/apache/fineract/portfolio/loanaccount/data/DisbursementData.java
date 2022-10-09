@@ -19,19 +19,22 @@
 package org.apache.fineract.portfolio.loanaccount.data;
 
 import java.math.BigDecimal;
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Immutable data object representing disbursement information.
  */
-public class DisbursementData implements Comparable<DisbursementData> {
+@RequiredArgsConstructor
+@Getter
+public final class DisbursementData implements Comparable<DisbursementData> {
 
-    @SuppressWarnings("unused")
     private final Long id;
     private final LocalDate expectedDisbursementDate;
     private final LocalDate actualDisbursementDate;
     private final BigDecimal principal;
-    @SuppressWarnings("unused")
+    private final BigDecimal netDisbursalAmount;
     private final String loanChargeId;
     private final BigDecimal chargeAmount;
     private final BigDecimal waivedChargeAmount;
@@ -61,22 +64,8 @@ public class DisbursementData implements Comparable<DisbursementData> {
         this.loanChargeId = null;
         this.chargeAmount = null;
         this.waivedChargeAmount = null;
+        this.netDisbursalAmount = null;
 
-    }
-
-    public String getLinkAccountId() {
-        return linkAccountId;
-    }
-
-    public DisbursementData(Long id, final LocalDate expectedDisbursementDate, final LocalDate actualDisbursementDate,
-            final BigDecimal principalDisbursed, final String loanChargeId, BigDecimal chargeAmount, BigDecimal waivedChargeAmount) {
-        this.id = id;
-        this.expectedDisbursementDate = expectedDisbursementDate;
-        this.actualDisbursementDate = actualDisbursementDate;
-        this.principal = principalDisbursed;
-        this.loanChargeId = loanChargeId;
-        this.chargeAmount = chargeAmount;
-        this.waivedChargeAmount = waivedChargeAmount;
     }
 
     public LocalDate disbursementDate() {
@@ -85,14 +74,6 @@ public class DisbursementData implements Comparable<DisbursementData> {
             disbursementDate = this.actualDisbursementDate;
         }
         return disbursementDate;
-    }
-
-    public BigDecimal amount() {
-        return this.principal;
-    }
-
-    public BigDecimal getChargeAmount() {
-        return this.chargeAmount;
     }
 
     public boolean isDisbursed() {

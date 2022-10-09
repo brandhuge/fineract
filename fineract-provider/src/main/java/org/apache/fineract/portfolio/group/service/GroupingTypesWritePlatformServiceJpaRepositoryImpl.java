@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.group.service;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.persistence.PersistenceException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandProcessingService;
@@ -41,9 +44,13 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.dataqueries.data.EntityTables;
 import org.apache.fineract.infrastructure.dataqueries.data.StatusEnum;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
+import org.apache.fineract.infrastructure.event.business.domain.group.CentersCreateBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.group.GroupsCreateBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
@@ -59,10 +66,6 @@ import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.service.LoanStatusMapper;
-import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants;
-import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BusinessEntity;
-import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BusinessEvents;
-import org.apache.fineract.portfolio.common.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.group.api.GroupingTypesApiConstants;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.domain.GroupLevel;
@@ -83,10 +86,6 @@ import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
@@ -95,9 +94,9 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements GroupingTypesWritePlatformService {
-
-    private static final Logger LOG = LoggerFactory.getLogger(GroupingTypesWritePlatformServiceJpaRepositoryImpl.class);
 
     private final PlatformSecurityContext context;
     private final GroupRepositoryWrapper groupRepository;
@@ -117,38 +116,6 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
     private final AccountNumberGenerator accountNumberGenerator;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
-
-    @Autowired
-    public GroupingTypesWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
-            final GroupRepositoryWrapper groupRepository, final ClientRepositoryWrapper clientRepositoryWrapper,
-            final OfficeRepositoryWrapper officeRepositoryWrapper, final StaffRepositoryWrapper staffRepository,
-            final NoteRepository noteRepository, final GroupLevelRepository groupLevelRepository,
-            final GroupingTypesDataValidator fromApiJsonDeserializer, final SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
-            final CodeValueRepositoryWrapper codeValueRepository, final CommandProcessingService commandProcessingService,
-            final CalendarInstanceRepository calendarInstanceRepository, final ConfigurationDomainService configurationDomainService,
-            final LoanRepositoryWrapper loanRepositoryWrapper, final AccountNumberFormatRepositoryWrapper accountNumberFormatRepository,
-            final AccountNumberGenerator accountNumberGenerator,
-            final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService,
-            final BusinessEventNotifierService businessEventNotifierService) {
-        this.context = context;
-        this.groupRepository = groupRepository;
-        this.clientRepositoryWrapper = clientRepositoryWrapper;
-        this.officeRepositoryWrapper = officeRepositoryWrapper;
-        this.staffRepository = staffRepository;
-        this.noteRepository = noteRepository;
-        this.groupLevelRepository = groupLevelRepository;
-        this.fromApiJsonDeserializer = fromApiJsonDeserializer;
-        this.savingsAccountRepositoryWrapper = savingsAccountRepositoryWrapper;
-        this.codeValueRepository = codeValueRepository;
-        this.commandProcessingService = commandProcessingService;
-        this.calendarInstanceRepository = calendarInstanceRepository;
-        this.configurationDomainService = configurationDomainService;
-        this.loanRepositoryWrapper = loanRepositoryWrapper;
-        this.accountNumberFormatRepository = accountNumberFormatRepository;
-        this.accountNumberGenerator = accountNumberGenerator;
-        this.entityDatatableChecksWritePlatformService = entityDatatableChecksWritePlatformService;
-        this.businessEventNotifierService = businessEventNotifierService;
-    }
 
     private CommandProcessingResult createGroupingType(final JsonCommand command, final GroupTypes groupingType, final Long centerId) {
         try {
@@ -185,7 +152,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
             final Set<Group> groupMembers = assembleSetOfChildGroups(officeId, command);
 
             final boolean active = command.booleanPrimitiveValueOfParameterNamed(GroupingTypesApiConstants.activeParamName);
-            LocalDate submittedOnDate = new LocalDate();
+            LocalDate submittedOnDate = DateUtils.getBusinessLocalDate();
             if (active && submittedOnDate.isAfter(activationDate)) {
                 submittedOnDate = activationDate;
             }
@@ -198,7 +165,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
             boolean rollbackTransaction = false;
             if (newGroup.isActive()) {
-                this.groupRepository.save(newGroup);
+                this.groupRepository.saveAndFlush(newGroup);
                 // validate Group creation rules for Group
                 if (newGroup.isGroup()) {
                     validateGroupRulesBeforeActivation(newGroup);
@@ -288,8 +255,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
         CommandProcessingResult commandProcessingResult = createGroupingType(command, GroupTypes.CENTER, centerId);
 
-        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BusinessEvents.CENTERS_CREATE,
-                constructEntityMap(BusinessEntity.GROUP, commandProcessingResult));
+        businessEventNotifierService.notifyPostBusinessEvent(new CentersCreateBusinessEvent(commandProcessingResult));
 
         return commandProcessingResult;
     }
@@ -306,8 +272,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
         CommandProcessingResult commandProcessingResult = createGroupingType(command, GroupTypes.GROUP, centerId);
 
-        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BusinessEventNotificationConstants.BusinessEvents.GROUPS_CREATE,
-                constructEntityMap(BusinessEntity.GROUP, commandProcessingResult));
+        businessEventNotifierService.notifyPostBusinessEvent(new GroupsCreateBusinessEvent(commandProcessingResult));
 
         return commandProcessingResult;
     }
@@ -542,7 +507,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
         groupForUpdate.updateStaff(staff);
 
         if (inheritStaffForClientAccounts) {
-            LocalDate loanOfficerReassignmentDate = LocalDate.now();
+            LocalDate loanOfficerReassignmentDate = DateUtils.getBusinessLocalDate();
             /*
              * update loan officer for client and update loan officer for clients loans and savings
              */
@@ -591,8 +556,8 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                 throw new GroupMustBePendingToBeDeletedException(groupId);
             }
 
-            final List<Note> relatedNotes = this.noteRepository.findByGroupId(groupId);
-            this.noteRepository.deleteInBatch(relatedNotes);
+            final List<Note> relatedNotes = this.noteRepository.findByGroup(groupForDelete);
+            this.noteRepository.deleteAllInBatch(relatedNotes);
 
             this.groupRepository.delete(groupForDelete);
             this.groupRepository.flush();
@@ -603,7 +568,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                     .build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
             Throwable throwable = ExceptionUtils.getRootCause(dve.getCause());
-            LOG.error("Error occured.", throwable);
+            log.error("Error occured.", throwable);
             throw new PlatformDataIntegrityException("error.msg.group.unknown.data.integrity.issue",
                     "Unknown data integrity issue with resource.", dve);
         }
@@ -651,7 +616,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                 final String errorMessage = groupOrCenter.getGroupLevel().getLevelName() + " cannot be closed because of non-closed loans.";
                 throw new InvalidGroupStateTransitionException(groupOrCenter.getGroupLevel().getLevelName(), "close", "loan.not.closed",
                         errorMessage);
-            } else if (loanStatus.isClosed() && loan.getClosedOnDate().after(closureDate.toDate())) {
+            } else if (loanStatus.isClosed() && loan.getClosedOnDate().isAfter(closureDate)) {
                 final String errorMessage = groupOrCenter.getGroupLevel().getLevelName()
                         + "closureDate cannot be before the loan closedOnDate.";
                 throw new InvalidGroupStateTransitionException(groupOrCenter.getGroupLevel().getLevelName(), "close",
@@ -796,7 +761,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                     name);
         }
 
-        LOG.error("Error occured.", dve);
+        log.error("Error occured.", dve);
         throw new PlatformDataIntegrityException("error.msg.group.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource.");
     }
@@ -993,12 +958,5 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                 }
             }
         }
-    }
-
-    private Map<BusinessEventNotificationConstants.BusinessEntity, Object> constructEntityMap(final BusinessEntity entityEvent,
-            Object entity) {
-        Map<BusinessEntity, Object> map = new HashMap<>(1);
-        map.put(entityEvent, entity);
-        return map;
     }
 }

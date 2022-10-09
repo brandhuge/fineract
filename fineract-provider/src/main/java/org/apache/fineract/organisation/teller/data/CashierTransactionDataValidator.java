@@ -19,10 +19,11 @@
 package org.apache.fineract.organisation.teller.data;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.Teller;
@@ -31,8 +32,6 @@ import org.apache.fineract.organisation.teller.exception.CashierDateRangeOutOfTe
 import org.apache.fineract.organisation.teller.exception.CashierInsufficientAmountException;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,9 +48,9 @@ public class CashierTransactionDataValidator {
 
     @Autowired
     public CashierTransactionDataValidator(final TellerManagementReadPlatformService tellerManagementReadPlatformService,
-            final RoutingDataSource dataSource) {
+            final JdbcTemplate jdbcTemplate) {
         this.tellerManagementReadPlatformService = tellerManagementReadPlatformService;
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public void validateSettleCashAndCashOutTransactions(final Long cashierId, String currencyCode, final BigDecimal transactionAmount) {
@@ -60,8 +59,8 @@ public class CashierTransactionDataValidator {
         final Integer limit = null;
         final String orderBy = null;
         final String sortOrder = null;
-        final Date fromDate = null;
-        final Date toDate = null;
+        final LocalDate fromDate = null;
+        final LocalDate toDate = null;
         final SearchParameters searchParameters = SearchParameters.forPagination(offset, limit, orderBy, sortOrder);
         final CashierTransactionsWithSummaryData cashierTxnWithSummary = this.tellerManagementReadPlatformService
                 .retrieveCashierTransactionsWithSummary(cashierId, false, fromDate, toDate, currencyCode, searchParameters);
@@ -78,8 +77,8 @@ public class CashierTransactionDataValidator {
 
     public void validateCashierAllowedDateAndTime(final Cashier cashier, final Teller teller) {
         Long staffId = cashier.getStaff().getId();
-        final LocalDate fromDate = new LocalDate(cashier.getStartDate());
-        final LocalDate endDate = new LocalDate(cashier.getEndDate());
+        final LocalDate fromDate = cashier.getStartDate();
+        final LocalDate endDate = cashier.getEndDate();
         final LocalDate tellerFromDate = teller.getStartLocalDate();
         final LocalDate tellerEndDate = teller.getEndLocalDate();
         /**
@@ -99,10 +98,10 @@ public class CashierTransactionDataValidator {
         if (!cashier.isFullDay()) {
             String startTime = cashier.getStartTime();
             String endTime = cashier.getEndTime();
-            sql = sql + " AND ( Time(c.start_time) BETWEEN TIME('" + startTime + "') and TIME('" + endTime
-                    + "') or Time(c.end_time) BETWEEN TIME('" + startTime + "') and TIME('" + endTime + "')) ";
+            sql = sql + " AND ( Time(c.start_time) BETWEEN TIME(?) and TIME('" + endTime + "') or Time(c.end_time) BETWEEN TIME('"
+                    + startTime + "') and TIME('" + endTime + "')) ";
         }
-        int count = this.jdbcTemplate.queryForObject(sql, Integer.class);
+        int count = this.jdbcTemplate.queryForObject(sql, Integer.class); // NOSONAR
         if (count > 0) {
             throw new CashierAlreadyAlloacated();
         }
@@ -113,10 +112,11 @@ public class CashierTransactionDataValidator {
         if (user.getStaff() != null) {
             String sql = "select c.id from m_cashiers c where c.staff_id = " + user.getStaff().getId() + " AND "
                     + " (case when c.full_day then '" + localDateTime.toLocalDate() + "' BETWEEN c.start_date AND c.end_date " + " else ('"
-                    + localDateTime.toLocalDate() + "' BETWEEN c.start_date AND c.end_date and " + " TIME('" + localDateTime.toDateTime()
+                    + localDateTime.toLocalDate() + "' BETWEEN c.start_date AND c.end_date and " + " TIME('"
+                    + ZonedDateTime.of(localDateTime, DateUtils.getDateTimeZoneOfTenant())
                     + "') BETWEEN TIME(c.start_time) AND TIME(c.end_time)  ) end)";
             try {
-                Long cashierId = this.jdbcTemplate.queryForObject(sql, Long.class);
+                Long cashierId = this.jdbcTemplate.queryForObject(sql, Long.class); // NOSONAR
                 validateSettleCashAndCashOutTransactions(cashierId, currencyCode, transactionAmount);
             } catch (EmptyResultDataAccessException e) {
                 LOG.error("Problem occurred in validateOnLoanDisbursal function", e);

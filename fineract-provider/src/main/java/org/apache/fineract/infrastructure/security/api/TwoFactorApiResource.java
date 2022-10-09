@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.infrastructure.security.api;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.DefaultValue;
@@ -44,14 +45,15 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.infrastructure.security.service.TwoFactorService;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Path("/twofactor")
 @Component
-@Profile("twofactor")
+@ConditionalOnProperty("fineract.security.2fa.enabled")
 @Scope("singleton")
+@Tag(name = "Two Factor", description = "")
 public class TwoFactorApiResource {
 
     private final ToApiJsonSerializer<OTPMetadata> otpRequestSerializer;

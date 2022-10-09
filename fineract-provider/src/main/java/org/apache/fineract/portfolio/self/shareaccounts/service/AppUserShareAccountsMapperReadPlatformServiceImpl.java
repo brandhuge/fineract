@@ -19,7 +19,6 @@
 
 package org.apache.fineract.portfolio.self.shareaccounts.service;
 
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -30,8 +29,8 @@ public class AppUserShareAccountsMapperReadPlatformServiceImpl implements AppUse
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public AppUserShareAccountsMapperReadPlatformServiceImpl(final RoutingDataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    public AppUserShareAccountsMapperReadPlatformServiceImpl(final JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -39,7 +38,7 @@ public class AppUserShareAccountsMapperReadPlatformServiceImpl implements AppUse
         return this.jdbcTemplate.queryForObject("select case when (count(*) > 0) then true else false end "
                 + " from m_selfservice_user_client_mapping as m "
                 + " left join m_share_account as shares on shares.client_id = m.client_id  " + " where shares.id = ? and m.appuser_id = ? ",
-                new Object[] { accountId, appUserId }, Boolean.class);
+                Boolean.class, accountId, appUserId);
     }
 
 }

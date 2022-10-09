@@ -19,6 +19,8 @@
 package org.apache.fineract.portfolio.client.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,10 +54,6 @@ import org.apache.fineract.portfolio.client.domain.ClientTransaction;
 import org.apache.fineract.portfolio.client.domain.ClientTransactionRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
-import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,14 +117,14 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             }
 
             final ClientCharge clientCharge = ClientCharge.createNew(client, charge, command);
-            final DateTimeFormatter fmt = DateTimeFormat.forPattern(command.dateFormat());
+            final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat());
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                     .resource(ClientApiConstants.CLIENT_CHARGES_RESOURCE_NAME);
             LocalDate activationDate = client.getActivationLocalDate();
             LocalDate dueDate = clientCharge.getDueLocalDate();
             if (dueDate.isBefore(activationDate)) {
-                baseDataValidator.reset().parameter(ClientApiConstants.dueAsOfDateParamName).value(dueDate.toString(fmt))
+                baseDataValidator.reset().parameter(ClientApiConstants.dueAsOfDateParamName).value(dueDate.format(fmt))
                         .failWithCodeNoParameterAddedToErrorCode("dueDate.before.activationDate");
 
                 if (!dataValidationErrors.isEmpty()) {
@@ -159,7 +157,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             final ClientCharge clientCharge = this.clientChargeRepository.findOneWithNotFoundDetection(clientChargeId);
 
             final Locale locale = command.extractLocale();
-            final DateTimeFormatter fmt = DateTimeFormat.forPattern(command.dateFormat()).withLocale(locale);
+            final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
             final LocalDate transactionDate = command.localDateValueOfParameterNamed(ClientApiConstants.transactionDateParamName);
             final BigDecimal amountPaid = command.bigDecimalValueOfParameterNamed(ClientApiConstants.amountParamName);
             final Money chargePaid = Money.of(clientCharge.getCurrency(), amountPaid);
@@ -175,7 +173,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
 
             ClientTransaction clientTransaction = ClientTransaction.payCharge(client, client.getOffice(), paymentDetail, transactionDate,
-                    chargePaid, clientCharge.getCurrency().getCode(), getAppUserIfPresent());
+                    chargePaid, clientCharge.getCurrency().getCode());
             this.clientTransactionRepository.saveAndFlush(clientTransaction);
 
             // update charge paid by associations
@@ -208,7 +206,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
         try {
             final Client client = this.clientRepository.getActiveClientInUserScope(clientId);
             final ClientCharge clientCharge = this.clientChargeRepository.findOneWithNotFoundDetection(clientChargeId);
-            final LocalDate transactionDate = DateUtils.getLocalDateOfTenant();
+            final LocalDate transactionDate = DateUtils.getBusinessLocalDate();
 
             // Validate business rules for payment
             validateWaiverTransaction(client, clientCharge);
@@ -218,8 +216,8 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
 
             // create Waiver Transaction
             ClientTransaction clientTransaction = ClientTransaction.waiver(client, client.getOffice(), transactionDate, waivedAmount,
-                    clientCharge.getCurrency().getCode(), getAppUserIfPresent());
-            this.clientTransactionRepository.save(clientTransaction);
+                    clientCharge.getCurrency().getCode());
+            this.clientTransactionRepository.saveAndFlush(clientTransaction);
 
             // update charge paid by associations
             final ClientChargePaidBy chargePaidBy = ClientChargePaidBy.instance(clientTransaction, clientCharge, waivedAmount.getAmount());
@@ -297,13 +295,13 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             validateTransactionDateOnWorkingDay(transactionDate, clientCharge, fmt);
 
             if (client.getActivationLocalDate() != null && transactionDate.isBefore(client.getActivationLocalDate())) {
-                baseDataValidator.reset().parameter(ClientApiConstants.transactionDateParamName).value(transactionDate.toString(fmt))
+                baseDataValidator.reset().parameter(ClientApiConstants.transactionDateParamName).value(transactionDate.format(fmt))
                         .failWithCodeNoParameterAddedToErrorCode("transaction.before.activationDate");
                 throw new PlatformApiDataValidationException(dataValidationErrors);
             }
 
             if (DateUtils.isDateInTheFuture(transactionDate)) {
-                baseDataValidator.reset().parameter(ClientApiConstants.transactionDateParamName).value(transactionDate.toString(fmt))
+                baseDataValidator.reset().parameter(ClientApiConstants.transactionDateParamName).value(transactionDate.format(fmt))
                         .failWithCodeNoParameterAddedToErrorCode("transaction.is.futureDate");
                 throw new PlatformApiDataValidationException(dataValidationErrors);
             }
@@ -393,7 +391,8 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
     /**
      * Ensures that the charge transaction date (for payments) is not on a holiday or a non working day
      *
-     * @param savingsAccountCharge
+     * @param transactionDate
+     * @param clientCharge
      * @param fmt
      */
     private void validateTransactionDateOnWorkingDay(final LocalDate transactionDate, final ClientCharge clientCharge,
@@ -407,7 +406,8 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
      * @param date
      * @param officeId
      * @param jsonPropertyName
-     * @param errorMessageFragment
+     * @param errorMessageFragmentForActivityOnHoliday
+     * @param errorMessageFragmentForActivityOnNonWorkingDay
      * @param fmt
      */
     private void validateActivityDateFallOnAWorkingDay(final LocalDate date, final Long officeId, final String jsonPropertyName,
@@ -419,7 +419,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
         if (date != null) {
             // transaction date should not be on a holiday or non working day
             if (!this.configurationDomainService.allowTransactionsOnHolidayEnabled() && this.holidayRepository.isHoliday(officeId, date)) {
-                baseDataValidator.reset().parameter(jsonPropertyName).value(date.toString(fmt))
+                baseDataValidator.reset().parameter(jsonPropertyName).value(date.format(fmt))
                         .failWithCodeNoParameterAddedToErrorCode(errorMessageFragmentForActivityOnHoliday);
                 if (!dataValidationErrors.isEmpty()) {
                     throw new PlatformApiDataValidationException(dataValidationErrors);
@@ -428,21 +428,13 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
 
             if (!this.configurationDomainService.allowTransactionsOnNonWorkingDayEnabled()
                     && !this.workingDaysRepository.isWorkingDay(date)) {
-                baseDataValidator.reset().parameter(jsonPropertyName).value(date.toString(fmt))
+                baseDataValidator.reset().parameter(jsonPropertyName).value(date.format(fmt))
                         .failWithCodeNoParameterAddedToErrorCode(errorMessageFragmentForActivityOnNonWorkingDay);
                 if (!dataValidationErrors.isEmpty()) {
                     throw new PlatformApiDataValidationException(dataValidationErrors);
                 }
             }
         }
-    }
-
-    private AppUser getAppUserIfPresent() {
-        AppUser user = null;
-        if (this.context != null) {
-            user = this.context.getAuthenticatedUserIfPresent();
-        }
-        return user;
     }
 
     private void handleDataIntegrityIssues(@SuppressWarnings("unused") final Long clientId, final Long clientChargeId,

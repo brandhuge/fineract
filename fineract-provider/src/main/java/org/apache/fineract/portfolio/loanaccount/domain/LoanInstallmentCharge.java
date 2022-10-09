@@ -109,6 +109,11 @@ public class LoanInstallmentCharge extends AbstractPersistableCustom implements 
         return BigDecimal.ZERO.compareTo(calculateOutstanding()) == 0;
     }
 
+    public void undoWaive(final BigDecimal amountOutstanding, final BigDecimal amountWaived) {
+        this.amountOutstanding = amountOutstanding;
+        this.amountWaived = amountWaived;
+    }
+
     private BigDecimal calculateOutstanding() {
         if (this.amount == null) {
             return null;
@@ -221,6 +226,18 @@ public class LoanInstallmentCharge extends AbstractPersistableCustom implements 
         this.paid = false;
     }
 
+    public void resetAmountWaived(final BigDecimal amountWaived) {
+        this.amountWaived = amountWaived;
+    }
+
+    public void undoWaiveFlag() {
+        this.waived = false;
+    }
+
+    public void resetOutstandingAmount(final BigDecimal amountOutstanding) {
+        this.amountOutstanding = amountOutstanding;
+    }
+
     public void resetToOriginal(final MonetaryCurrency currency) {
         this.amountPaid = BigDecimal.ZERO;
         this.amountWaived = BigDecimal.ZERO;
@@ -302,4 +319,7 @@ public class LoanInstallmentCharge extends AbstractPersistableCustom implements 
         return this.installment;
     }
 
+    public void setInstallment(LoanRepaymentScheduleInstallment installment) {
+        this.installment = installment;
+    }
 }

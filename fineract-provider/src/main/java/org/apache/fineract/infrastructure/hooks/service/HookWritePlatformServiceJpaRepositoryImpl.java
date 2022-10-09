@@ -30,12 +30,14 @@ import static org.apache.fineract.infrastructure.hooks.api.HookApiConstants.webT
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.persistence.PersistenceException;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -61,15 +63,14 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.template.domain.Template;
 import org.apache.fineract.template.domain.TemplateRepository;
 import org.apache.fineract.template.exception.TemplateNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import retrofit.RetrofitError;
 
 @Service
+@RequiredArgsConstructor
 public class HookWritePlatformServiceJpaRepositoryImpl implements HookWritePlatformService {
 
     private final PlatformSecurityContext context;
@@ -78,18 +79,7 @@ public class HookWritePlatformServiceJpaRepositoryImpl implements HookWritePlatf
     private final TemplateRepository ugdTemplateRepository;
     private final HookCommandFromApiJsonDeserializer fromApiJsonDeserializer;
     private final FromJsonHelper fromApiJsonHelper;
-
-    @Autowired
-    public HookWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context, final HookRepository hookRepository,
-            final HookTemplateRepository hookTemplateRepository, final TemplateRepository ugdTemplateRepository,
-            final HookCommandFromApiJsonDeserializer fromApiJsonDeserializer, final FromJsonHelper fromApiJsonHelper) {
-        this.context = context;
-        this.hookRepository = hookRepository;
-        this.hookTemplateRepository = hookTemplateRepository;
-        this.ugdTemplateRepository = ugdTemplateRepository;
-        this.fromApiJsonDeserializer = fromApiJsonDeserializer;
-        this.fromApiJsonHelper = fromApiJsonHelper;
-    }
+    private final ProcessorHelper processorHelper;
 
     @Transactional
     @Override
@@ -116,7 +106,7 @@ public class HookWritePlatformServiceJpaRepositoryImpl implements HookWritePlatf
 
             validateHookRules(template, config, allEvents);
 
-            this.hookRepository.save(hook);
+            this.hookRepository.saveAndFlush(hook);
 
             return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(hook.getId()).build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
@@ -270,7 +260,7 @@ public class HookWritePlatformServiceJpaRepositoryImpl implements HookWritePlatf
         for (final HookConfiguration conf : config) {
             final String fieldValue = conf.getFieldValue();
             if (conf.getFieldName().equals(contentTypeName)) {
-                if (!(fieldValue.equalsIgnoreCase("json") || fieldValue.equalsIgnoreCase("form"))) {
+                if ((!fieldValue.equalsIgnoreCase("json") && !fieldValue.equalsIgnoreCase("form"))) {
                     final String errorMessage = "content.type.must.be.json.or.form";
                     baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(errorMessage);
                 }
@@ -278,16 +268,11 @@ public class HookWritePlatformServiceJpaRepositoryImpl implements HookWritePlatf
 
             if (conf.getFieldName().equals(payloadURLName)) {
                 try {
-                    final WebHookService service = ProcessorHelper.createWebHookService(fieldValue);
-                    service.sendEmptyRequest();
-                } catch (RetrofitError re) {
-                    // Swallow error if it's because of method not supported or
-                    // if url throws 404 - required for integration test,
-                    // url generated on 1st POST request
-                    if (re.getResponse() == null) {
-                        String errorMessage = "url.invalid";
-                        baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(errorMessage);
-                    }
+                    final WebHookService service = processorHelper.createWebHookService(fieldValue);
+                    service.sendEmptyRequest().execute();
+                } catch (IOException re) {
+                    String errorMessage = "url.invalid";
+                    baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(errorMessage);
                 }
             }
         }

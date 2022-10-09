@@ -19,14 +19,11 @@
 package org.apache.fineract.portfolio.tax.domain;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
-import org.joda.time.LocalDate;
 
 @Entity
 @Table(name = "m_tax_component_history")
@@ -36,12 +33,10 @@ public class TaxComponentHistory extends AbstractAuditableCustom {
     private BigDecimal percentage;
 
     @Column(name = "start_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date startDate;
+    private LocalDate startDate;
 
     @Column(name = "end_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date endDate;
+    private LocalDate endDate;
 
     protected TaxComponentHistory() {
 
@@ -49,8 +44,8 @@ public class TaxComponentHistory extends AbstractAuditableCustom {
 
     private TaxComponentHistory(final BigDecimal percentage, final LocalDate startDate, final LocalDate endDate) {
         this.percentage = percentage;
-        this.startDate = startDate.toDate();
-        this.endDate = endDate.toDate();
+        this.startDate = startDate;
+        this.endDate = endDate;
     }
 
     public static TaxComponentHistory createTaxComponentHistory(final BigDecimal percentage, final LocalDate startDate,
@@ -59,19 +54,11 @@ public class TaxComponentHistory extends AbstractAuditableCustom {
     }
 
     public LocalDate startDate() {
-        LocalDate startDate = null;
-        if (this.startDate != null) {
-            startDate = new LocalDate(this.startDate);
-        }
-        return startDate;
+        return this.startDate;
     }
 
     public LocalDate endDate() {
-        LocalDate endDate = null;
-        if (this.endDate != null) {
-            endDate = new LocalDate(this.endDate);
-        }
-        return endDate;
+        return this.endDate;
     }
 
     public boolean occursOnDayFromAndUpToAndIncluding(final LocalDate target) {

@@ -19,15 +19,16 @@
 package org.apache.fineract.portfolio.loanaccount.guarantor.service;
 
 import java.math.BigDecimal;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.organisation.staff.data.StaffData;
 import org.apache.fineract.organisation.staff.service.StaffReadPlatformService;
 import org.apache.fineract.portfolio.account.data.PortfolioAccountData;
@@ -41,14 +42,15 @@ import org.apache.fineract.portfolio.loanaccount.guarantor.data.GuarantorTransac
 import org.apache.fineract.portfolio.loanaccount.guarantor.data.ObligeeData;
 import org.apache.fineract.portfolio.savings.data.DepositAccountOnHoldTransactionData;
 import org.apache.fineract.portfolio.savings.service.SavingsEnumerations;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -57,9 +59,9 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
     private final LoanRepositoryWrapper loanRepositoryWrapper;
 
     @Autowired
-    public GuarantorReadPlatformServiceImpl(final RoutingDataSource dataSource, final ClientReadPlatformService clientReadPlatformService,
+    public GuarantorReadPlatformServiceImpl(final JdbcTemplate jdbcTemplate, final ClientReadPlatformService clientReadPlatformService,
             final StaffReadPlatformService staffReadPlatformService, final LoanRepositoryWrapper loanRepositoryWrapper) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcTemplate = jdbcTemplate;
         this.clientReadPlatformService = clientReadPlatformService;
         this.staffReadPlatformService = staffReadPlatformService;
         this.loanRepositoryWrapper = loanRepositoryWrapper;
@@ -75,9 +77,15 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
     public List<GuarantorData> retrieveGuarantorsForLoan(final Long loanId) {
         final GuarantorMapper rm = new GuarantorMapper();
         String sql = "select " + rm.schema();
-        sql += " where loan_id = ?  group by g.id,gfd.id, gt.id";
-        final List<GuarantorData> guarantorDatas = this.jdbcTemplate.query(sql, rm,
-                new Object[] { AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue(), loanId });
+        sql += " where loan_id = ?  group by g.id,gfd.id, gt.id, sa.id, oht.id, cv.id order by g.id";
+        String finalSql = sql;
+        final List<GuarantorData> guarantorDatas = this.jdbcTemplate.query(con -> {
+            PreparedStatement preparedStatement = con.prepareStatement(finalSql, ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            preparedStatement.setInt(1, AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue());
+            preparedStatement.setLong(2, loanId); // NOSONAR
+            return preparedStatement;
+        }, rm);
 
         final List<GuarantorData> mergedGuarantorDatas = new ArrayList<>();
 
@@ -91,9 +99,16 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
     public GuarantorData retrieveGuarantor(final Long loanId, final Long guarantorId) {
         final GuarantorMapper rm = new GuarantorMapper();
         String sql = "select " + rm.schema();
-        sql += " where g.loan_id = ? and g.id = ? group by g.id, gfd.id, gt.id";
-        final GuarantorData guarantorData = this.jdbcTemplate.queryForObject(sql, rm,
-                new Object[] { AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue(), loanId, guarantorId });
+        sql += " where g.loan_id = ? and g.id = ? group by g.id, gfd.id, gt.id, sa.id, oht.id, cv.id order by g.id";
+        String finalSql = sql;
+        final GuarantorData guarantorData = this.jdbcTemplate.query(con -> {
+            PreparedStatement preparedStatement = con.prepareStatement(finalSql, ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            preparedStatement.setInt(1, AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue());
+            preparedStatement.setLong(2, loanId);
+            preparedStatement.setLong(3, guarantorId);// NOSONAR
+            return preparedStatement;
+        }, rm).get(0);
 
         return mergeDetailsForClientOrStaffGuarantor(guarantorData);
     }
@@ -114,7 +129,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
                         .append(" FROM m_guarantor g") //
                         .append(" left JOIN m_code_value cv on g.client_reln_cv_id = cv.id")//
                         .append(" left JOIN m_guarantor_funding_details gfd on g.id = gfd.guarantor_id")//
-                        .append(" left JOIN m_portfolio_account_associations aa on gfd.account_associations_id = aa.id and aa.is_active = 1 and aa.association_type_enum = ?")//
+                        .append(" left JOIN m_portfolio_account_associations aa on gfd.account_associations_id = aa.id and aa.is_active = true and aa.association_type_enum = ?")//
                         .append(" left JOIN m_savings_account sa on sa.id = aa.linked_savings_account_id ")//
                         .append(" left join m_guarantor_transaction gt on gt.guarantor_fund_detail_id = gfd.id") //
                         .append(" left join m_deposit_account_on_hold_transaction oht on oht.id = gt.deposit_on_hold_transaction_id");
@@ -199,7 +214,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
         public GuarantorFundingData mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             GuarantorFundingData guarantorFundingData = null;
             final Long id = rs.getLong("gfdId");
-            if (id != null && id > 0) {
+            if (id > 0) {
                 final BigDecimal amount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "amount");
                 final BigDecimal amountReleased = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "amountReleased");
                 final BigDecimal amountRemaining = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "amountRemaining");
@@ -216,7 +231,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
                         guarantorTransactions.add(guarantorTransactionData);
                         while (rs.next()) {
                             final Long tempFundId = rs.getLong("gfdId");
-                            if (tempFundId != null && tempFundId.equals(id)) {
+                            if (tempFundId.equals(id)) {
                                 guarantorTransactionData = this.guarantorTransactionMapper.mapRow(rs, rowNum);
                                 guarantorTransactions.add(guarantorTransactionData);
                             } else {
@@ -261,11 +276,9 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
             EnumOptionData transactionType = SavingsEnumerations.onHoldTransactionType(transactionTypeEnum);
             final boolean reversed = rs.getBoolean("reversed");
             final boolean transactionReversed = rs.getBoolean("transactionReversed");
-            if (id != null) {
-                DepositAccountOnHoldTransactionData onHoldTransactionData = DepositAccountOnHoldTransactionData.instance(transactionId,
-                        amount, transactionType, date, transactionReversed);
-                guarantorTransactionData = GuarantorTransactionData.instance(id, onHoldTransactionData, null, reversed);
-            }
+            DepositAccountOnHoldTransactionData onHoldTransactionData = DepositAccountOnHoldTransactionData.instance(transactionId, amount,
+                    transactionType, date, transactionReversed);
+            guarantorTransactionData = GuarantorTransactionData.instance(id, onHoldTransactionData, null, reversed);
             return guarantorTransactionData;
         }
 
@@ -290,7 +303,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
         final ObligeeMapper rm = new ObligeeMapper();
         String sql = rm.schema();
         try {
-            return this.jdbcTemplate.query(sql, rm, new Object[] { clientId });
+            return this.jdbcTemplate.query(sql, rm, clientId);
         } catch (final EmptyResultDataAccessException e) {
             return null;
         }

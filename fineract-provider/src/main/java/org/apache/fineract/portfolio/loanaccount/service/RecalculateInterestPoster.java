@@ -18,10 +18,11 @@
  */
 package org.apache.fineract.portfolio.loanaccount.service;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.Callable;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Component;
 public class RecalculateInterestPoster implements Callable<Void> {
 
     private static final Logger LOG = LoggerFactory.getLogger(RecalculateInterestPoster.class);
+    private static final SecureRandom random = new SecureRandom();
 
     private Collection<Long> loanIds;
     private LoanWritePlatformService loanWritePlatformService;
@@ -50,6 +52,8 @@ public class RecalculateInterestPoster implements Callable<Void> {
     }
 
     @Override
+    @SuppressFBWarnings(value = {
+            "DMI_RANDOM_USED_ONLY_ONCE" }, justification = "False positive for random object created and used only once")
     public Void call() throws JobExecutionException {
         Integer maxNumberOfRetries = ThreadLocalContextUtil.getTenant().getConnection().getMaxRetriesOnDeadlock();
         Integer maxIntervalBetweenRetries = ThreadLocalContextUtil.getTenant().getConnection().getMaxIntervalBetweenRetries();
@@ -58,18 +62,19 @@ public class RecalculateInterestPoster implements Callable<Void> {
         if (!loanIds.isEmpty()) {
             List<Throwable> errors = new ArrayList<>();
             for (Long loanId : loanIds) {
-                LOG.info("Loan ID {}", loanId);
+                LOG.debug("Loan ID {}", loanId);
                 Integer numberOfRetries = 0;
                 while (numberOfRetries <= maxNumberOfRetries) {
                     try {
                         this.loanWritePlatformService.recalculateInterest(loanId);
                         numberOfRetries = maxNumberOfRetries + 1;
                     } catch (CannotAcquireLockException | ObjectOptimisticLockingFailureException exception) {
-                        LOG.info("Recalulate interest job has been retried {} time(s)", numberOfRetries);
+                        LOG.debug("Recalculate interest job has been retried {} time(s)", numberOfRetries);
                         // Fail if the transaction has been retired for
                         // maxNumberOfRetries
                         if (numberOfRetries >= maxNumberOfRetries) {
-                            LOG.error("Recalulate interest job has been retried for the max allowed attempts of {} and will be rolled back",
+                            LOG.error(
+                                    "Recalculate interest job has been retried for the max allowed attempts of {} and will be rolled back",
                                     numberOfRetries);
                             errors.add(exception);
                             break;
@@ -77,7 +82,6 @@ public class RecalculateInterestPoster implements Callable<Void> {
                         // Else sleep for a random time (between 1 to 10
                         // seconds) and continue
                         try {
-                            Random random = new Random();
                             int randomNum = random.nextInt(maxIntervalBetweenRetries + 1);
                             Thread.sleep(1000 + (randomNum * 1000));
                             numberOfRetries = numberOfRetries + 1;
@@ -93,7 +97,7 @@ public class RecalculateInterestPoster implements Callable<Void> {
                     }
                     i++;
                 }
-                LOG.info("Loans count {}", i);
+                LOG.debug("Loans count {}", i);
             }
             if (!errors.isEmpty()) {
                 throw new JobExecutionException(errors);

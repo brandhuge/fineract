@@ -18,8 +18,8 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
+import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -67,16 +67,20 @@ public interface LoanRepository extends JpaRepository<Loan, Long>, JpaSpecificat
 
     String DOES_PRODUCT_HAVE_NON_CLOSED_LOANS = "select case when (count (loan) > 0) then 'true' else 'false' end from Loan loan where loan.loanProduct.id = :productId and loan.loanStatus in (100,200,300,303,304,700)";
 
-    String FIND_BY_ACCOUNT_NUMBER = "select loan from Loan loan where loan.accountNumber = :accountNumber and loan.loanStatus in (100,200,300,303,304)";
+    String FIND_NON_CLOSED_BY_ACCOUNT_NUMBER = "select loan from Loan loan where loan.accountNumber = :accountNumber and loan.loanStatus in (100,200,300,303,304)";
+
+    String FIND_ALL_NON_CLOSED = "select loan.id from Loan loan where loan.loanStatus in (100,200,300,303,304)";
 
     String FIND_NON_CLOSED_LOAN_THAT_BELONGS_TO_CLIENT = "select loan from Loan loan where loan.id = :loanId and loan.loanStatus = 300 and loan.client.id = :clientId";
 
+    String FIND_BY_ACCOUNT_NUMBER = "select loan from Loan loan where loan.accountNumber = :accountNumber";
+
     @Query(FIND_GROUP_LOANS_DISBURSED_AFTER)
-    List<Loan> getGroupLoansDisbursedAfter(@Param("disbursementDate") Date disbursementDate, @Param("groupId") Long groupId,
+    List<Loan> getGroupLoansDisbursedAfter(@Param("disbursementDate") LocalDate disbursementDate, @Param("groupId") Long groupId,
             @Param("loanType") Integer loanType);
 
     @Query(FIND_CLIENT_OR_JLG_LOANS_DISBURSED_AFTER)
-    List<Loan> getClientOrJLGLoansDisbursedAfter(@Param("disbursementDate") Date disbursementDate, @Param("clientId") Long clientId);
+    List<Loan> getClientOrJLGLoansDisbursedAfter(@Param("disbursementDate") LocalDate disbursementDate, @Param("clientId") Long clientId);
 
     @Query(FIND_MAX_GROUP_LOAN_COUNTER_QUERY)
     Integer getMaxGroupLoanCounter(@Param("groupId") Long groupId, @Param("loanType") Integer loanType);
@@ -127,7 +131,7 @@ public interface LoanRepository extends JpaRepository<Loan, Long>, JpaSpecificat
             @Param("loanStatuses") Collection<Integer> loanStatuses, @Param("loanTypes") Collection<Integer> loanTypes);
 
     @Query("select loan.id from Loan loan where loan.actualDisbursementDate > :disbursalDate order by loan.actualDisbursementDate")
-    List<Long> getLoansDisbursedAfter(@Param("disbursalDate") Date disbursalDate);
+    List<Long> getLoansDisbursedAfter(@Param("disbursalDate") LocalDate disbursalDate);
 
     @Query("select loan from Loan loan where loan.client.office.id IN :officeIds and loan.loanStatus IN :loanStatuses")
     List<Loan> findByClientOfficeIdsAndLoanStatus(@Param("officeIds") Collection<Long> officeIds,
@@ -150,10 +154,18 @@ public interface LoanRepository extends JpaRepository<Loan, Long>, JpaSpecificat
     @Query(DOES_PRODUCT_HAVE_NON_CLOSED_LOANS)
     boolean doNonClosedLoanAccountsExistForProduct(@Param("productId") Long productId);
 
-    @Query(FIND_BY_ACCOUNT_NUMBER)
+    @Query(FIND_NON_CLOSED_BY_ACCOUNT_NUMBER)
     Loan findNonClosedLoanByAccountNumber(@Param("accountNumber") String accountNumber);
 
     @Query(FIND_NON_CLOSED_LOAN_THAT_BELONGS_TO_CLIENT)
     Loan findNonClosedLoanThatBelongsToClient(@Param("loanId") Long loanId, @Param("clientId") Long clientId);
+
+    @Query(FIND_BY_ACCOUNT_NUMBER)
+    Loan findLoanAccountByAccountNumber(@Param("accountNumber") String accountNumber);
+
+    boolean existsByExternalId(@Param("externalId") String externalId);
+
+    @Query(FIND_ALL_NON_CLOSED)
+    List<Long> findAllNonClosedLoanIds();
 
 }

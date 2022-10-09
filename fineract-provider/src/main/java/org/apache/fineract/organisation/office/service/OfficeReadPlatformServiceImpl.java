@@ -21,11 +21,13 @@ package org.apache.fineract.organisation.office.service;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -34,7 +36,6 @@ import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.office.data.OfficeTransactionData;
 import org.apache.fineract.organisation.office.exception.OfficeNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -46,6 +47,7 @@ import org.springframework.stereotype.Service;
 public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final PlatformSecurityContext context;
     private final CurrencyReadPlatformService currencyReadPlatformService;
     private final ColumnValidator columnValidator;
@@ -53,12 +55,13 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
 
     @Autowired
     public OfficeReadPlatformServiceImpl(final PlatformSecurityContext context,
-            final CurrencyReadPlatformService currencyReadPlatformService, final RoutingDataSource dataSource,
-            final ColumnValidator columnValidator) {
+            final CurrencyReadPlatformService currencyReadPlatformService, final JdbcTemplate jdbcTemplate,
+            final ColumnValidator columnValidator, DatabaseSpecificSQLGenerator sqlGenerator) {
         this.context = context;
         this.currencyReadPlatformService = currencyReadPlatformService;
         this.columnValidator = columnValidator;
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcTemplate = jdbcTemplate;
+        this.sqlGenerator = sqlGenerator;
     }
 
     private static final class OfficeMapper implements RowMapper<OfficeData> {
@@ -104,13 +107,20 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
 
     private static final class OfficeTransactionMapper implements RowMapper<OfficeTransactionData> {
 
+        private final DatabaseSpecificSQLGenerator sqlGenerator;
+
+        OfficeTransactionMapper(DatabaseSpecificSQLGenerator sqlGenerator) {
+            this.sqlGenerator = sqlGenerator;
+        }
+
         public String schema() {
             return " ot.id as id, ot.transaction_date as transactionDate, ot.from_office_id as fromOfficeId, fromoff.name as fromOfficeName, "
                     + " ot.to_office_id as toOfficeId, tooff.name as toOfficeName, ot.transaction_amount as transactionAmount, ot.description as description, "
                     + " ot.currency_code as currencyCode, rc.decimal_places as currencyDigits, rc.currency_multiplesof as inMultiplesOf, "
                     + " rc.name as currencyName, rc.internationalized_name_code as currencyNameCode, rc.display_symbol as currencyDisplaySymbol "
                     + " from m_office_transaction ot " + " left join m_office fromoff on fromoff.id = ot.from_office_id "
-                    + " left join m_office tooff on tooff.id = ot.to_office_id " + " join m_currency rc on rc.`code` = ot.currency_code";
+                    + " left join m_office tooff on tooff.id = ot.to_office_id " + " join m_currency rc on rc."
+                    + sqlGenerator.escape("code") + " = ot.currency_code";
         }
 
         @Override
@@ -146,12 +156,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
     public Collection<OfficeData> retrieveAllOffices(final boolean includeAllOffices, final SearchParameters searchParameters) {
         final AppUser currentUser = this.context.authenticatedUser();
         final String hierarchy = currentUser.getOffice().getHierarchy();
-        String hierarchySearchString = null;
-        if (includeAllOffices) {
-            hierarchySearchString = "." + "%";
-        } else {
-            hierarchySearchString = hierarchy + "%";
-        }
+        final String hierarchySearchString = includeAllOffices ? "." + "%" : hierarchy + "%";
         final OfficeMapper rm = new OfficeMapper();
         final StringBuilder sqlBuilder = new StringBuilder(200);
         sqlBuilder.append("select ");
@@ -169,7 +174,8 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
                 sqlBuilder.append("order by o.hierarchy");
             }
         }
-        return this.jdbcTemplate.query(sqlBuilder.toString(), rm, new Object[] { hierarchySearchString });
+
+        return this.jdbcTemplate.query(sqlBuilder.toString(), rm, new Object[] { hierarchySearchString }); // NOSONAR
     }
 
     @Override
@@ -183,7 +189,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
         final OfficeDropdownMapper rm = new OfficeDropdownMapper();
         final String sql = "select " + rm.schema() + "where o.hierarchy like ? order by o.hierarchy";
 
-        return this.jdbcTemplate.query(sql, rm, new Object[] { hierarchySearchString });
+        return this.jdbcTemplate.query(sql, rm, new Object[] { hierarchySearchString }); // NOSONAR
     }
 
     @Override
@@ -196,7 +202,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
             final OfficeMapper rm = new OfficeMapper();
             final String sql = "select " + rm.officeSchema() + " where o.id = ?";
 
-            final OfficeData selectedOffice = this.jdbcTemplate.queryForObject(sql, rm, new Object[] { officeId });
+            final OfficeData selectedOffice = this.jdbcTemplate.queryForObject(sql, rm, new Object[] { officeId }); // NOSONAR
 
             return selectedOffice;
         } catch (final EmptyResultDataAccessException e) {
@@ -209,7 +215,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
 
         this.context.authenticatedUser();
 
-        return OfficeData.template(null, new LocalDate());
+        return OfficeData.template(null, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
     }
 
     @Override
@@ -243,11 +249,11 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
         final String hierarchy = currentUser.getOffice().getHierarchy();
         final String hierarchySearchString = hierarchy + "%";
 
-        final OfficeTransactionMapper rm = new OfficeTransactionMapper();
+        final OfficeTransactionMapper rm = new OfficeTransactionMapper(sqlGenerator);
         final String sql = "select " + rm.schema()
                 + " where (fromoff.hierarchy like ? or tooff.hierarchy like ?) order by ot.transaction_date, ot.id";
 
-        return this.jdbcTemplate.query(sql, rm, new Object[] { hierarchySearchString, hierarchySearchString });
+        return this.jdbcTemplate.query(sql, rm, new Object[] { hierarchySearchString, hierarchySearchString }); // NOSONAR
     }
 
     @Override
@@ -257,7 +263,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
         final Collection<OfficeData> parentLookups = retrieveAllOfficesForDropdown();
         final Collection<CurrencyData> currencyOptions = this.currencyReadPlatformService.retrieveAllowedCurrencies();
 
-        return OfficeTransactionData.template(new LocalDate(), parentLookups, currencyOptions);
+        return OfficeTransactionData.template(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), parentLookups, currencyOptions);
     }
 
     public PlatformSecurityContext getContext() {

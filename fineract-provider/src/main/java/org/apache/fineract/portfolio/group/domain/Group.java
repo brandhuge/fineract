@@ -18,8 +18,8 @@
  */
 package org.apache.fineract.portfolio.group.domain;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,10 +35,7 @@ import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import javax.persistence.Transient;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -59,7 +56,6 @@ import org.apache.fineract.portfolio.group.exception.GroupNotExistsInCenterExcep
 import org.apache.fineract.portfolio.group.exception.InvalidGroupStateTransitionException;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringAccount;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
 
 @Entity
 @Table(name = "m_group")
@@ -75,8 +71,7 @@ public final class Group extends AbstractPersistableCustom {
     private Integer status;
 
     @Column(name = "activation_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date activationDate;
+    private LocalDate activationDate;
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "activatedon_userid", nullable = true)
@@ -117,16 +112,14 @@ public final class Group extends AbstractPersistableCustom {
     private CodeValue closureReason;
 
     @Column(name = "closedon_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date closureDate;
+    private LocalDate closureDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "closedon_userid", nullable = true)
     private AppUser closedBy;
 
     @Column(name = "submittedon_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date submittedOnDate;
+    private LocalDate submittedOnDate;
 
     @ManyToOne(optional = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "submittedon_userid", nullable = true)
@@ -208,7 +201,7 @@ public final class Group extends AbstractPersistableCustom {
             this.groupMembers.addAll(groupMembers);
         }
 
-        this.submittedOnDate = submittedOnDate.toDate();
+        this.submittedOnDate = submittedOnDate;
         this.submittedBy = currentUser;
         this.staffHistory = null;
 
@@ -240,7 +233,7 @@ public final class Group extends AbstractPersistableCustom {
         validateStatusNotEqualToActiveAndLogError(dataValidationErrors);
         if (dataValidationErrors.isEmpty()) {
             this.status = GroupingTypeStatus.ACTIVE.getValue();
-            setActivationDate(activationLocalDate.toDate(), currentUser, dataValidationErrors);
+            setActivationDate(activationLocalDate, currentUser, dataValidationErrors);
         }
 
     }
@@ -257,7 +250,8 @@ public final class Group extends AbstractPersistableCustom {
 
     }
 
-    private void setActivationDate(final Date activationDate, final AppUser loginUser, final List<ApiParameterError> dataValidationErrors) {
+    private void setActivationDate(final LocalDate activationDate, final AppUser loginUser,
+            final List<ApiParameterError> dataValidationErrors) {
 
         if (activationDate != null) {
             this.activationDate = activationDate;
@@ -281,7 +275,7 @@ public final class Group extends AbstractPersistableCustom {
     }
 
     private boolean isDateInTheFuture(final LocalDate localDate) {
-        return localDate.isAfter(DateUtils.getLocalDateOfTenant());
+        return localDate.isAfter(DateUtils.getBusinessLocalDate());
     }
 
     public boolean isNotPending() {
@@ -332,10 +326,7 @@ public final class Group extends AbstractPersistableCustom {
             actualChanges.put(GroupingTypesApiConstants.dateFormatParamName, dateFormatAsInput);
             actualChanges.put(GroupingTypesApiConstants.localeParamName, localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(GroupingTypesApiConstants.activationDateParamName);
-            if (newValue != null) {
-                this.activationDate = newValue.toDate();
-            }
+            this.activationDate = command.localDateValueOfParameterNamed(GroupingTypesApiConstants.activationDateParamName);
         }
 
         if (command.isChangeInStringParameterNamed(GroupingTypesApiConstants.accountNoParamName, this.accountNumber)) {
@@ -350,25 +341,18 @@ public final class Group extends AbstractPersistableCustom {
             actualChanges.put(GroupingTypesApiConstants.dateFormatParamName, dateFormatAsInput);
             actualChanges.put(GroupingTypesApiConstants.localeParamName, localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(GroupingTypesApiConstants.submittedOnDateParamName);
-            if (newValue != null) {
-                this.submittedOnDate = newValue.toDate();
-            }
+            this.submittedOnDate = command.localDateValueOfParameterNamed(GroupingTypesApiConstants.submittedOnDateParamName);
         }
 
         return actualChanges;
     }
 
     public LocalDate getSubmittedOnDate() {
-        return ObjectUtils.defaultIfNull(new LocalDate(this.submittedOnDate), null);
+        return this.submittedOnDate;
     }
 
     public LocalDate getActivationLocalDate() {
-        LocalDate activationLocalDate = null;
-        if (this.activationDate != null) {
-            activationLocalDate = new LocalDate(this.activationDate);
-        }
-        return activationLocalDate;
+        return this.activationDate;
     }
 
     public List<String> associateClients(final Set<Client> clientMembersSet) {
@@ -444,7 +428,7 @@ public final class Group extends AbstractPersistableCustom {
 
     public void updateStaff(final Staff staff) {
         if (this.isCenter() && this.isActive()) {
-            LocalDate updatedDate = DateUtils.getLocalDateOfTenant();
+            LocalDate updatedDate = DateUtils.getBusinessLocalDate();
             reassignStaff(staff, updatedDate);
         }
         this.staff = staff;
@@ -452,7 +436,7 @@ public final class Group extends AbstractPersistableCustom {
 
     public void unassignStaff() {
         if (this.isCenter() && this.isActive()) {
-            LocalDate dateOfStaffUnassigned = DateUtils.getLocalDateOfTenant();
+            LocalDate dateOfStaffUnassigned = DateUtils.getBusinessLocalDate();
             removeStaff(dateOfStaffUnassigned);
         }
         this.staff = null;
@@ -538,7 +522,7 @@ public final class Group extends AbstractPersistableCustom {
         }
 
         this.closureReason = closureReason;
-        this.closureDate = closureDate.toDate();
+        this.closureDate = closureDate;
         this.status = GroupingTypeStatus.CLOSED.getValue();
         this.closedBy = currentUser;
     }

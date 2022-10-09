@@ -23,6 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,8 +36,6 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -49,7 +48,7 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
             "professionId", "locale", "dateFormat", "familyMembers"));
 
     @Autowired
-    private ClientFamilyMemberCommandFromApiJsonDeserializer(final FromJsonHelper fromApiJsonHelper) {
+    public ClientFamilyMemberCommandFromApiJsonDeserializer(final FromJsonHelper fromApiJsonHelper) {
         this.fromApiJsonHelper = fromApiJsonHelper;
     }
 
@@ -162,7 +161,7 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.extractLocalDateNamed("dateOfBirth", element) != null) {
             final LocalDate dateOfBirth = this.fromApiJsonHelper.extractLocalDateNamed("dateOfBirth", element);
             baseDataValidator.reset().parameter("dateOfBirth").value(dateOfBirth).value(dateOfBirth).notNull()
-                    .validateDateBefore(DateUtils.getLocalDateOfTenant());
+                    .validateDateBefore(DateUtils.getBusinessLocalDate());
 
         }
 
@@ -229,10 +228,8 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
         }
 
         if (this.fromApiJsonHelper.extractLocalDateNamed("dateOfBirth", element) != null) {
-            LocalDateTime currentDate = LocalDateTime.now();
-
             final LocalDate dateOfBirth = this.fromApiJsonHelper.extractLocalDateNamed("dateOfBirth", element);
-            baseDataValidator.reset().parameter("dateOfBirth").value(dateOfBirth).validateDateBefore(currentDate.toLocalDate());
+            baseDataValidator.reset().parameter("dateOfBirth").value(dateOfBirth).validateDateBefore(DateUtils.getBusinessLocalDate());
 
         }
 

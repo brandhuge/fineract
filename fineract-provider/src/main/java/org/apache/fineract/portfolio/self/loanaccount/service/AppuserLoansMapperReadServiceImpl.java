@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.portfolio.self.loanaccount.service;
 
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -29,8 +28,8 @@ public class AppuserLoansMapperReadServiceImpl implements AppuserLoansMapperRead
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public AppuserLoansMapperReadServiceImpl(final RoutingDataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    public AppuserLoansMapperReadServiceImpl(final JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -38,7 +37,7 @@ public class AppuserLoansMapperReadServiceImpl implements AppuserLoansMapperRead
         return this.jdbcTemplate.queryForObject(
                 "select case when (count(*) > 0) then true else false end " + " from m_selfservice_user_client_mapping as m "
                         + " left join m_loan as l on l.client_id = m.client_id " + " where l.id = ? and m.appuser_id = ? ",
-                new Object[] { loanId, appUserId }, Boolean.class);
+                Boolean.class, loanId, appUserId);
     }
 
 }

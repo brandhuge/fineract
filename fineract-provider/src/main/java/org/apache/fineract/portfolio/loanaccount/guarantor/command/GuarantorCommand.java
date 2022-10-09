@@ -19,15 +19,14 @@
 package org.apache.fineract.portfolio.loanaccount.guarantor.command;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.portfolio.loanaccount.guarantor.GuarantorConstants.GuarantorJSONinputParams;
 import org.apache.fineract.portfolio.loanaccount.guarantor.domain.GuarantorType;
-import org.joda.time.LocalDate;
 
 /**
  * Immutable command for creating or updating details of a Guarantor.
@@ -89,8 +88,8 @@ public class GuarantorCommand {
         return GuarantorType.EXTERNAL.getValue().equals(this.guarantorTypeId);
     }
 
-    public Date getDobAsDate() {
-        return this.dob.toDateTimeAtStartOfDay().toDate();
+    public LocalDate getDobAsDate() {
+        return this.dob;
     }
 
     public void validateForCreate() {

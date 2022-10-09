@@ -65,7 +65,7 @@ public interface LoanProductConstants {
     String MIN_NUMBER_OF_REPAYMENTS = "minNumberOfRepayments";
     String MAX_NUMBER_OF_REPAYMENTS = "maxNumberOfRepayments";
 
-    String VALUE_CONDITION_END_WITH_ERROR = "condition.type.must.end.with.greterthan";
+    String VALUE_CONDITION_END_WITH_ERROR = "condition.type.must.end.with.greater.than";
     String VALUE_CONDITION_START_WITH_ERROR = "condition.type.must.start.with.equal";
     String SHORT_NAME = "shortName";
 
@@ -109,7 +109,7 @@ public interface LoanProductConstants {
     BigDecimal DEFAULT_PRINCIPAL_THRESHOLD_FOR_SINGLE_DISBURSE_LOAN = BigDecimal.valueOf(0);
     // Fixed installment configuration related
     String canDefineEmiAmountParamName = "canDefineInstallmentAmount";
-    String installmentAmountInMultiplesOfParamName = "installmentAmountInMultiplesOf";
+    String fixedPrincipalPercentagePerInstallmentParamName = "fixedPrincipalPercentagePerInstallment";
 
     // Loan Configurable Attributes
     String allowAttributeOverridesParamName = "allowAttributeOverrides";
@@ -134,5 +134,13 @@ public interface LoanProductConstants {
     String IS_EQUAL_AMORTIZATION_PARAM = "isEqualAmortization";
 
     String RATES_PARAM_NAME = "rates";
+
+    // Multiple disbursement related
+    String installmentAmountInMultiplesOfParamName = "installmentAmountInMultiplesOf";
+    String DISALLOW_EXPECTED_DISBURSEMENTS = "disallowExpectedDisbursements";
+    String ALLOW_APPROVED_DISBURSED_AMOUNTS_OVER_APPLIED = "allowApprovedDisbursedAmountsOverApplied";
+    String OVER_APPLIED_CALCULATION_TYPE = "overAppliedCalculationType";
+    String OVER_APPLIED_NUMBER = "overAppliedNumber";
+    String DELINQUENCY_BUCKET_PARAM_NAME = "delinquencyBucketId";
 
 }

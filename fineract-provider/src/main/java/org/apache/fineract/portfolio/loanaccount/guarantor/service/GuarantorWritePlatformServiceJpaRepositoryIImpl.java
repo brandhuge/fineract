@@ -32,6 +32,7 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.portfolio.account.domain.AccountAssociationType;
 import org.apache.fineract.portfolio.account.domain.AccountAssociations;
@@ -53,7 +54,6 @@ import org.apache.fineract.portfolio.loanaccount.guarantor.exception.InvalidGuar
 import org.apache.fineract.portfolio.loanaccount.guarantor.serialization.GuarantorCommandFromApiJsonDeserializer;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
-import org.joda.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,19 +110,21 @@ public class GuarantorWritePlatformServiceJpaRepositoryIImpl implements Guaranto
             guarantorCommand.validateForCreate();
             validateLoanStatus(loan);
             final List<GuarantorFundingDetails> guarantorFundingDetails = new ArrayList<>();
+            final boolean backdatedTxnsAllowedTill = false;
             AccountAssociations accountAssociations = null;
             if (guarantorCommand.getSavingsId() != null) {
-                final SavingsAccount savingsAccount = this.savingsAccountAssembler.assembleFrom(guarantorCommand.getSavingsId());
+                final SavingsAccount savingsAccount = this.savingsAccountAssembler.assembleFrom(guarantorCommand.getSavingsId(),
+                        backdatedTxnsAllowedTill);
                 validateGuarantorSavingsAccountActivationDateWithLoanSubmittedOnDate(loan, savingsAccount);
                 accountAssociations = AccountAssociations.associateSavingsAccount(loan, savingsAccount,
-                        AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue(), true);
+                        AccountAssociationType.GUARANTOR_ACCOUNT_ASSOCIATION.getValue(), backdatedTxnsAllowedTill);
 
                 GuarantorFundingDetails fundingDetails = new GuarantorFundingDetails(accountAssociations,
                         GuarantorFundStatusType.ACTIVE.getValue(), guarantorCommand.getAmount());
                 guarantorFundingDetails.add(fundingDetails);
                 if (loan.isDisbursed()
                         || (loan.isApproved() && (loan.getGuaranteeAmount() != null || loan.loanProduct().isHoldGuaranteeFundsEnabled()))) {
-                    this.guarantorDomainService.assignGuarantor(fundingDetails, LocalDate.now());
+                    this.guarantorDomainService.assignGuarantor(fundingDetails, DateUtils.getBusinessLocalDate());
                     loan.updateGuaranteeAmount(fundingDetails.getAmount());
                 }
             }
@@ -171,9 +173,9 @@ public class GuarantorWritePlatformServiceJpaRepositoryIImpl implements Guaranto
             }
 
             if (accountAssociations != null) {
-                this.accountAssociationsRepository.save(accountAssociations);
+                this.accountAssociationsRepository.saveAndFlush(accountAssociations);
             }
-            this.guarantorRepository.save(guarantor);
+            this.guarantorRepository.saveAndFlush(guarantor);
             return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withOfficeId(guarantor.getOfficeId())
                     .withEntityId(guarantor.getId()).withLoanId(loan.getId()).build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
@@ -242,7 +244,7 @@ public class GuarantorWritePlatformServiceJpaRepositoryIImpl implements Guaranto
             }
 
             if (!changesOnly.isEmpty()) {
-                this.guarantorRepository.save(guarantorForUpdate);
+                this.guarantorRepository.saveAndFlush(guarantorForUpdate);
             }
 
             return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withOfficeId(guarantorForUpdate.getOfficeId())
@@ -309,7 +311,7 @@ public class GuarantorWritePlatformServiceJpaRepositoryIImpl implements Guaranto
         GuarantorFundStatusType fundStatusType = GuarantorFundStatusType.DELETED;
         if (guarantorForDelete.getLoan().isDisbursed() || guarantorForDelete.getLoan().isApproved()) {
             fundStatusType = GuarantorFundStatusType.WITHDRAWN;
-            this.guarantorDomainService.releaseGuarantor(guarantorFundingDetails, LocalDate.now());
+            this.guarantorDomainService.releaseGuarantor(guarantorFundingDetails, DateUtils.getBusinessLocalDate());
         }
         guarantorForDelete.updateStatus(guarantorFundingDetails, fundStatusType);
     }

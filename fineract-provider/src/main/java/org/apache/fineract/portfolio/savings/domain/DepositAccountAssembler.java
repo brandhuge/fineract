@@ -57,10 +57,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
@@ -98,9 +99,6 @@ import org.apache.fineract.portfolio.savings.exception.FixedDepositProductNotFou
 import org.apache.fineract.portfolio.savings.exception.RecurringDepositProductNotFoundException;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -356,7 +354,7 @@ public class DepositAccountAssembler {
 
         if (account != null) {
             account.setHelpers(this.savingsAccountTransactionSummaryWrapper, this.savingsHelper);
-            account.validateNewApplicationState(DateUtils.getLocalDateOfTenant(), depositAccountType.resourceName());
+            account.validateNewApplicationState(DateUtils.getBusinessLocalDate(), depositAccountType.resourceName());
         }
 
         return account;
@@ -457,7 +455,7 @@ public class DepositAccountAssembler {
         final String dateFormat = this.fromApiJsonHelper.extractDateFormatParameter(element.getAsJsonObject());
         final JsonObject topLevelJsonElement = element.getAsJsonObject();
         final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
-        final DateTimeFormatter formatter = DateTimeFormat.forPattern(dateFormat).withLocale(locale);
+        final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormat).withLocale(locale);
 
         if (element.isJsonObject()) {
             if (topLevelJsonElement.has(bulkSavingsDueTransactionsParamName)
@@ -476,7 +474,7 @@ public class DepositAccountAssembler {
                         detail = this.paymentDetailAssembler.fetchPaymentDetail(savingsTransactionElement);
                     }
                     final SavingsAccountTransactionDTO savingsAccountTransactionDTO = new SavingsAccountTransactionDTO(formatter,
-                            transactionDate, dueAmount, detail, new Date(), savingsId, user, depositAccountType);
+                            transactionDate, dueAmount, detail, DateUtils.getLocalDateTimeOfSystem(), savingsId, user, depositAccountType);
                     savingsAccountTransactions.add(savingsAccountTransactionDTO);
                 }
             }

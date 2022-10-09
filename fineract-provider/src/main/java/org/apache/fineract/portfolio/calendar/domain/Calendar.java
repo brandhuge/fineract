@@ -20,26 +20,26 @@ package org.apache.fineract.portfolio.calendar.domain;
 
 import static org.apache.fineract.portfolio.calendar.CalendarConstants.CALENDAR_RESOURCE_NAME;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
-import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
+import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.calendar.CalendarConstants.CalendarSupportedParameters;
@@ -47,12 +47,10 @@ import org.apache.fineract.portfolio.calendar.exception.CalendarDateException;
 import org.apache.fineract.portfolio.calendar.exception.CalendarParameterUpdateNotSupportedException;
 import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
 import org.apache.fineract.portfolio.common.domain.NthDayType;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 
 @Entity
 @Table(name = "m_calendar")
-public class Calendar extends AbstractAuditableCustom {
+public class Calendar extends AbstractAuditableWithUTCDateTimeCustom {
 
     @Column(name = "title", length = 50, nullable = false)
     private String title;
@@ -64,12 +62,10 @@ public class Calendar extends AbstractAuditableCustom {
     private String location;
 
     @Column(name = "start_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date startDate;
+    private LocalDate startDate;
 
     @Column(name = "end_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date endDate;
+    private LocalDate endDate;
 
     @Column(name = "duration", nullable = true)
     private Integer duration;
@@ -93,11 +89,9 @@ public class Calendar extends AbstractAuditableCustom {
     private Integer secondReminder;
 
     @Column(name = "meeting_time", nullable = true)
-    @Temporal(TemporalType.TIME)
-    private Date meetingtime;
+    private LocalTime meetingtime;
 
-    @OneToMany(fetch = FetchType.EAGER)
-    @JoinColumn(name = "calendar_id")
+    @OneToMany(mappedBy = "calendar", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CalendarHistory> calendarHistory = new HashSet<>();
 
     protected Calendar() {
@@ -106,7 +100,7 @@ public class Calendar extends AbstractAuditableCustom {
 
     public Calendar(final String title, final String description, final String location, final LocalDate startDate, final LocalDate endDate,
             final Integer duration, final Integer typeId, final boolean repeating, final String recurrence, final Integer remindById,
-            final Integer firstReminder, final Integer secondReminder, final Date meetingtime) {
+            final Integer firstReminder, final Integer secondReminder, final LocalTime meetingtime) {
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource(CALENDAR_RESOURCE_NAME);
@@ -123,19 +117,8 @@ public class Calendar extends AbstractAuditableCustom {
         this.title = StringUtils.defaultIfEmpty(title, null);
         this.description = StringUtils.defaultIfEmpty(description, null);
         this.location = StringUtils.defaultIfEmpty(location, null);
-
-        if (null != startDate) {
-            this.startDate = startDate.toDateTimeAtStartOfDay().toDate();
-        } else {
-            this.startDate = null;
-        }
-
-        if (null != endDate) {
-            this.endDate = endDate.toDateTimeAtStartOfDay().toDate();
-        } else {
-            this.endDate = null;
-        }
-
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.duration = duration;
         this.typeId = typeId;
         this.repeating = repeating;
@@ -163,7 +146,7 @@ public class Calendar extends AbstractAuditableCustom {
         final Integer remindById = null;
         final Integer firstReminder = null;
         final Integer secondReminder = null;
-        final Date meetingtime = null;
+        final LocalTime meetingtime = null;
         return new Calendar(title, description, location, startDate, endDate, duration, typeId, repeating, recurrence, remindById,
                 firstReminder, secondReminder, meetingtime);
     }
@@ -173,7 +156,7 @@ public class Calendar extends AbstractAuditableCustom {
         // final Long entityId = command.getSupportedEntityId();
         // final Integer entityTypeId =
         // CalendarEntityType.valueOf(command.getSupportedEntityType().toUpperCase()).getValue();
-        Date meetingtime = null;
+        LocalTime meetingtime = null;
         final String title = command.stringValueOfParameterNamed(CalendarSupportedParameters.TITLE.getValue());
         final String description = command.stringValueOfParameterNamed(CalendarSupportedParameters.DESCRIPTION.getValue());
         final String location = command.stringValueOfParameterNamed(CalendarSupportedParameters.LOCATION.getValue());
@@ -186,10 +169,8 @@ public class Calendar extends AbstractAuditableCustom {
         final Integer firstReminder = command.integerValueSansLocaleOfParameterNamed(CalendarSupportedParameters.FIRST_REMINDER.getValue());
         final Integer secondReminder = command
                 .integerValueSansLocaleOfParameterNamed(CalendarSupportedParameters.SECOND_REMINDER.getValue());
-        final LocalDateTime time = command.localTimeValueOfParameterNamed(CalendarSupportedParameters.MEETING_TIME.getValue());
-        if (time != null) {
-            meetingtime = time.toDate();
-        }
+        meetingtime = command.localTimeValueOfParameterNamed(CalendarSupportedParameters.MEETING_TIME.getValue());
+
         final String recurrence = Calendar.constructRecurrence(command, null);
 
         return new Calendar(title, description, location, startDate, endDate, duration, typeId, repeating, recurrence, remindById,
@@ -215,7 +196,7 @@ public class Calendar extends AbstractAuditableCustom {
         } else {
 
             actualChanges.put(CalendarSupportedParameters.START_DATE.getValue(), newMeetingStartDate.toString());
-            this.startDate = newMeetingStartDate.toDate();
+            this.startDate = newMeetingStartDate;
 
             /*
              * If meeting start date is changed then there is possibilities of recurring day may change, so derive the
@@ -232,7 +213,7 @@ public class Calendar extends AbstractAuditableCustom {
              */
 
             if (calendarFrequencyType.isWeekly()) {
-                repeatsOnDay = newMeetingStartDate.getDayOfWeek();
+                repeatsOnDay = newMeetingStartDate.get(ChronoField.DAY_OF_WEEK);
             } else if (calendarFrequencyType.isMonthly()) {
                 repeatsOnDay = newMeetingStartDate.getDayOfMonth();
             }
@@ -291,7 +272,7 @@ public class Calendar extends AbstractAuditableCustom {
                 actualChanges.put(startDateParamName, valueAsInput);
                 actualChanges.put("dateFormat", dateFormatAsInput);
                 actualChanges.put("locale", localeAsInput);
-                this.startDate = newValue.toDate();
+                this.startDate = newValue;
             }
         }
 
@@ -302,8 +283,7 @@ public class Calendar extends AbstractAuditableCustom {
             actualChanges.put("dateFormat", dateFormatAsInput);
             actualChanges.put("locale", localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(endDateParamName);
-            this.endDate = newValue.toDate();
+            this.endDate = command.localDateValueOfParameterNamed(endDateParamName);
         }
 
         final String durationParamName = CalendarSupportedParameters.DURATION.getValue();
@@ -406,9 +386,9 @@ public class Calendar extends AbstractAuditableCustom {
         if (command.isChangeInTimeParameterNamed(CalendarSupportedParameters.MEETING_TIME.getValue(), this.meetingtime, timeFormat)) {
             final String newValue = command.stringValueOfParameterNamed(CalendarSupportedParameters.MEETING_TIME.getValue());
             actualChanges.put(CalendarSupportedParameters.MEETING_TIME.getValue(), newValue);
-            LocalDateTime timeInLocalDateTimeFormat = command.localTimeValueOfParameterNamed(time);
+            LocalTime timeInLocalDateTimeFormat = command.localTimeValueOfParameterNamed(time);
             if (timeInLocalDateTimeFormat != null) {
-                this.meetingtime = timeInLocalDateTimeFormat.toDate();
+                this.meetingtime = timeInLocalDateTimeFormat;
             }
 
         }
@@ -424,7 +404,7 @@ public class Calendar extends AbstractAuditableCustom {
         if (calendarStartDate != null && this.startDate != null) {
             if (!calendarStartDate.equals(this.getStartDateLocalDate())) {
                 actualChanges.put("startDate", calendarStartDate);
-                this.startDate = calendarStartDate.toDate();
+                this.startDate = calendarStartDate;
             }
         }
 
@@ -448,11 +428,11 @@ public class Calendar extends AbstractAuditableCustom {
         return this.location;
     }
 
-    public Date getStartDate() {
+    public LocalDate getStartDate() {
         return this.startDate;
     }
 
-    public Date getEndDate() {
+    public LocalDate getEndDate() {
         return this.endDate;
     }
 
@@ -484,24 +464,16 @@ public class Calendar extends AbstractAuditableCustom {
         return this.secondReminder;
     }
 
-    public Date getMeetingTime() {
+    public LocalTime getMeetingTime() {
         return this.meetingtime;
     }
 
     public LocalDate getStartDateLocalDate() {
-        LocalDate startDateLocalDate = null;
-        if (this.startDate != null) {
-            startDateLocalDate = LocalDate.fromDateFields(this.startDate);
-        }
-        return startDateLocalDate;
+        return this.startDate;
     }
 
     public LocalDate getEndDateLocalDate() {
-        LocalDate endDateLocalDate = null;
-        if (this.endDate != null) {
-            endDateLocalDate = LocalDate.fromDateFields(this.endDate);
-        }
-        return endDateLocalDate;
+        return this.endDate;
     }
 
     public Set<CalendarHistory> history() {
@@ -659,11 +631,11 @@ public class Calendar extends AbstractAuditableCustom {
 
         final CalendarFrequencyType frequencyType = CalendarUtils.getFrequency(this.recurrence);
         final Integer interval = Integer.valueOf(CalendarUtils.getInterval(this.recurrence));
-        final String newRecurrence = Calendar.constructRecurrence(frequencyType, interval, startDate.getDayOfWeek(), null);
+        final String newRecurrence = Calendar.constructRecurrence(frequencyType, interval, startDate.get(ChronoField.DAY_OF_WEEK), null);
 
         this.recurrence = newRecurrence;
-        this.startDate = startDate.toDate();
-        this.endDate = endDate.toDate();
+        this.startDate = startDate;
+        this.endDate = endDate;
     }
 
     public Set<CalendarHistory> getCalendarHistory() {

@@ -42,6 +42,7 @@ public enum InterestRecalculationCompoundingMethod {
     private final String code;
 
     private static final Map<Integer, InterestRecalculationCompoundingMethod> intToEnumMap = new HashMap<>();
+
     static {
         for (final InterestRecalculationCompoundingMethod type : InterestRecalculationCompoundingMethod.values()) {
             intToEnumMap.put(type.value, type);
@@ -49,8 +50,7 @@ public enum InterestRecalculationCompoundingMethod {
     }
 
     public static InterestRecalculationCompoundingMethod fromInt(final Integer ruleTypeValue) {
-        final InterestRecalculationCompoundingMethod type = intToEnumMap.get(ruleTypeValue);
-        return type;
+        return intToEnumMap.get(ruleTypeValue);
     }
 
     InterestRecalculationCompoundingMethod(final Integer value, final String code) {

@@ -19,26 +19,22 @@
 package org.apache.fineract.accounting.journalentry.service;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.closure.domain.GLClosure;
 import org.apache.fineract.accounting.common.AccountingConstants.CashAccountsForShares;
 import org.apache.fineract.accounting.journalentry.data.ChargePaymentDTO;
 import org.apache.fineract.accounting.journalentry.data.SharesDTO;
 import org.apache.fineract.accounting.journalentry.data.SharesTransactionDTO;
 import org.apache.fineract.organisation.office.domain.Office;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class CashBasedAccountingProcessorForShares implements AccountingProcessorForShares {
 
     private final AccountingProcessorHelper helper;
-
-    @Autowired
-    public CashBasedAccountingProcessorForShares(final AccountingProcessorHelper helper) {
-        this.helper = helper;
-    }
 
     @Override
     public void createJournalEntriesForShares(SharesDTO sharesDTO) {
@@ -47,7 +43,7 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
         final Long shareProductId = sharesDTO.getShareProductId();
         final String currencyCode = sharesDTO.getCurrencyCode();
         for (SharesTransactionDTO transactionDTO : sharesDTO.getNewTransactions()) {
-            final Date transactionDate = transactionDTO.getTransactionDate();
+            final LocalDate transactionDate = transactionDTO.getTransactionDate();
             final String transactionId = transactionDTO.getTransactionId();
             final Office office = this.helper.getOfficeById(transactionDTO.getOfficeId());
             final Long paymentTypeId = transactionDTO.getPaymentTypeId();
@@ -74,8 +70,8 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
     }
 
     public void createJournalEntriesForRedeem(final Long shareAccountId, final Long shareProductId, final String currencyCode,
-            final Date transactionDate, final String transactionId, final Office office, final Long paymentTypeId, final BigDecimal amount,
-            final BigDecimal chargeAmount, final List<ChargePaymentDTO> feePayments) {
+            final LocalDate transactionDate, final String transactionId, final Office office, final Long paymentTypeId,
+            final BigDecimal amount, final BigDecimal chargeAmount, final List<ChargePaymentDTO> feePayments) {
         if (chargeAmount == null || chargeAmount.compareTo(BigDecimal.ZERO) <= 0) {
             this.helper.createJournalEntriesForShares(office, currencyCode, CashAccountsForShares.SHARES_EQUITY.getValue(),
                     CashAccountsForShares.SHARES_REFERENCE.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
@@ -91,7 +87,7 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
     }
 
     public void createJournalEntriesForPurchase(final Long shareAccountId, final Long shareProductId, final String currencyCode,
-            SharesTransactionDTO transactionDTO, final Date transactionDate, final String transactionId, final Office office,
+            SharesTransactionDTO transactionDTO, final LocalDate transactionDate, final String transactionId, final Office office,
             final Long paymentTypeId, final BigDecimal amount, final BigDecimal chargeAmount, final List<ChargePaymentDTO> feePayments) {
         if (transactionDTO.getTransactionStatus().isApplied()) {
             if (chargeAmount == null || chargeAmount.compareTo(BigDecimal.ZERO) <= 0) {

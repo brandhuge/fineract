@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.organisation.provisioning.domain;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +38,6 @@ import org.apache.fineract.organisation.provisioning.constants.ProvisioningCrite
 import org.apache.fineract.organisation.provisioning.data.ProvisioningCriteriaDefinitionData;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.joda.time.DateTime;
 
 @Entity
 @Table(name = "m_provisioning_criteria", uniqueConstraints = {
@@ -66,13 +65,13 @@ public class ProvisioningCriteria extends AbstractAuditableCustom {
 
     }
 
-    public ProvisioningCriteria(String criteriaName, AppUser createdBy, DateTime createdDate, AppUser lastModifiedBy,
-            DateTime lastModifiedDate) {
+    public ProvisioningCriteria(String criteriaName, AppUser createdBy, LocalDateTime createdDate, AppUser lastModifiedBy,
+            LocalDateTime lastModifiedDate) {
         this.criteriaName = criteriaName;
-        setCreatedBy(createdBy);
-        setCreatedDate(Instant.ofEpochMilli(createdDate.getMillis()));
-        setLastModifiedBy(lastModifiedBy);
-        setLastModifiedDate(Instant.ofEpochMilli(lastModifiedDate.getMillis()));
+        setCreatedBy(createdBy.getId());
+        setCreatedDate(createdDate);
+        setLastModifiedBy(lastModifiedBy.getId());
+        setLastModifiedDate(lastModifiedDate);
     }
 
     public void setProvisioningCriteriaDefinitions(Set<ProvisioningCriteriaDefinition> provisioningCriteriaDefinition) {

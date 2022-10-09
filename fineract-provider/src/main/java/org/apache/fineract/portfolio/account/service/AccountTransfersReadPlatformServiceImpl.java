@@ -21,6 +21,8 @@ package org.apache.fineract.portfolio.account.service;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,8 +32,8 @@ import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.office.data.OfficeData;
@@ -44,9 +46,6 @@ import org.apache.fineract.portfolio.account.domain.AccountTransferType;
 import org.apache.fineract.portfolio.account.exception.AccountTransferNotFoundException;
 import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -62,25 +61,28 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
     private final OfficeReadPlatformService officeReadPlatformService;
     private final PortfolioAccountReadPlatformService portfolioAccountReadPlatformService;
     private final ColumnValidator columnValidator;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
 
     // mapper
     private final AccountTransfersMapper accountTransfersMapper;
 
     // pagination
-    private final PaginationHelper<AccountTransferData> paginationHelper = new PaginationHelper<>();
-    private final DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+    private final PaginationHelper paginationHelper;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Autowired
-    public AccountTransfersReadPlatformServiceImpl(final RoutingDataSource dataSource,
+    public AccountTransfersReadPlatformServiceImpl(final JdbcTemplate jdbcTemplate,
             final ClientReadPlatformService clientReadPlatformService, final OfficeReadPlatformService officeReadPlatformService,
-            final PortfolioAccountReadPlatformService portfolioAccountReadPlatformService, final ColumnValidator columnValidator) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+            final PortfolioAccountReadPlatformService portfolioAccountReadPlatformService, final ColumnValidator columnValidator,
+            DatabaseSpecificSQLGenerator sqlGenerator, PaginationHelper paginationHelper) {
+        this.jdbcTemplate = jdbcTemplate;
         this.clientReadPlatformService = clientReadPlatformService;
         this.officeReadPlatformService = officeReadPlatformService;
         this.portfolioAccountReadPlatformService = portfolioAccountReadPlatformService;
         this.columnValidator = columnValidator;
-
+        this.sqlGenerator = sqlGenerator;
         this.accountTransfersMapper = new AccountTransfersMapper();
+        this.paginationHelper = paginationHelper;
     }
 
     @Override
@@ -134,12 +136,12 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
             fromAccount = this.portfolioAccountReadPlatformService.retrieveOne(fromAccountId, accountType);
 
             // override provided fromClient with client of account
-            mostRelevantFromClientId = fromAccount.clientId();
+            mostRelevantFromClientId = fromAccount.getClientId();
         }
 
         if (mostRelevantFromClientId != null) {
             fromClient = this.clientReadPlatformService.retrieveOne(mostRelevantFromClientId);
-            mostRelevantFromOfficeId = fromClient.officeId();
+            mostRelevantFromOfficeId = fromClient.getOfficeId();
             long[] loanStatus = null;
             if (mostRelevantFromAccountType == 1) {
                 loanStatus = new long[] { 300, 700 };
@@ -158,19 +160,19 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
         }
 
         // defaults
-        final LocalDate transferDate = DateUtils.getLocalDateOfTenant();
+        final LocalDate transferDate = DateUtils.getBusinessLocalDate();
         Collection<OfficeData> toOfficeOptions = fromOfficeOptions;
         Collection<ClientData> toClientOptions = null;
 
         if (toAccountId != null && fromAccount != null) {
             toAccount = this.portfolioAccountReadPlatformService.retrieveOne(toAccountId, mostRelevantToAccountType,
-                    fromAccount.currencyCode());
-            mostRelevantToClientId = toAccount.clientId();
+                    fromAccount.getCurrencyCode());
+            mostRelevantToClientId = toAccount.getClientId();
         }
 
         if (mostRelevantToClientId != null) {
             toClient = this.clientReadPlatformService.retrieveOne(mostRelevantToClientId);
-            mostRelevantToOfficeId = toClient.officeId();
+            mostRelevantToOfficeId = toClient.getOfficeId();
 
             toClientOptions = this.clientReadPlatformService.retrieveAllForLookupByOfficeId(mostRelevantToOfficeId);
 
@@ -197,7 +199,7 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
     private Collection<PortfolioAccountData> retrieveToAccounts(final PortfolioAccountData excludeThisAccountFromOptions,
             final Integer toAccountType, final Long toClientId) {
 
-        final String currencyCode = excludeThisAccountFromOptions != null ? excludeThisAccountFromOptions.currencyCode() : null;
+        final String currencyCode = excludeThisAccountFromOptions != null ? excludeThisAccountFromOptions.getCurrencyCode() : null;
 
         PortfolioAccountDTO portfolioAccountDTO = new PortfolioAccountDTO(toAccountType, toClientId, currencyCode, null, null);
         Collection<PortfolioAccountData> accountOptions = this.portfolioAccountReadPlatformService
@@ -215,7 +217,7 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
     public Page<AccountTransferData> retrieveAll(final SearchParameters searchParameters, final Long accountDetailId) {
 
         final StringBuilder sqlBuilder = new StringBuilder(200);
-        sqlBuilder.append("select SQL_CALC_FOUND_ROWS ");
+        sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.accountTransfersMapper.schema());
         Object[] finalObjectArray = {};
         if (accountDetailId != null) {
@@ -239,9 +241,7 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
             }
         }
 
-        final String sqlCountRows = "SELECT FOUND_ROWS()";
-        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlCountRows, sqlBuilder.toString(), finalObjectArray,
-                this.accountTransfersMapper);
+        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, this.accountTransfersMapper);
     }
 
     @Override
@@ -250,7 +250,7 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
         try {
             final String sql = "select " + this.accountTransfersMapper.schema() + " where att.id = ?";
 
-            return this.jdbcTemplate.queryForObject(sql, this.accountTransfersMapper, new Object[] { transferId });
+            return this.jdbcTemplate.queryForObject(sql, this.accountTransfersMapper, new Object[] { transferId }); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new AccountTransferNotFoundException(transferId, e);
         }
@@ -258,12 +258,22 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
 
     @Override
     public Collection<Long> fetchPostInterestTransactionIds(final Long accountId) {
-        final String sql = "select att.from_savings_transaction_id from m_account_transfer_transaction att inner join m_account_transfer_details atd on atd.id = att.account_transfer_details_id where atd.from_savings_account_id=? and att.is_reversed =0 and atd.transfer_type = ?";
+        final String sql = "select att.from_savings_transaction_id from m_account_transfer_transaction att inner join m_account_transfer_details atd on atd.id = att.account_transfer_details_id where atd.from_savings_account_id=? and att.is_reversed = false and atd.transfer_type = ?";
 
         final List<Long> transactionId = this.jdbcTemplate.queryForList(sql, Long.class, accountId,
                 AccountTransferType.INTEREST_TRANSFER.getValue());
 
         return transactionId;
+    }
+
+    @Override
+    public Collection<Long> fetchPostInterestTransactionIdsWithPivotDate(final Long accountId, final LocalDate pivotDate) {
+        final String sql = "select att.from_savings_transaction_id from m_account_transfer_transaction att inner join m_account_transfer_details atd on atd.id = att.account_transfer_details_id where atd.from_savings_account_id=? and att.is_reversed = false and atd.transfer_type = ? and att.transaction_date >= ?";
+
+        final List<Long> transactionIds = this.jdbcTemplate.queryForList(sql, Long.class, accountId,
+                AccountTransferType.INTEREST_TRANSFER.getValue(), pivotDate);
+
+        return transactionIds;
     }
 
     private static final class AccountTransfersMapper implements RowMapper<AccountTransferData> {
@@ -401,7 +411,7 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
     public Page<AccountTransferData> retrieveByStandingInstruction(final Long id, final SearchParameters searchParameters) {
 
         final StringBuilder sqlBuilder = new StringBuilder(200);
-        sqlBuilder.append("select SQL_CALC_FOUND_ROWS ");
+        sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.accountTransfersMapper.schema()).append(
                 " join m_account_transfer_standing_instructions atsi on atsi.account_transfer_details_id = att.account_transfer_details_id ");
         sqlBuilder.append(" where atsi.id = ?");
@@ -417,17 +427,17 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
             }
 
             if (searchParameters.isLimited()) {
-                sqlBuilder.append(" limit ").append(searchParameters.getLimit());
+                sqlBuilder.append(" ");
                 if (searchParameters.isOffset()) {
-                    sqlBuilder.append(" offset ").append(searchParameters.getOffset());
+                    sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit(), searchParameters.getOffset()));
+                } else {
+                    sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
                 }
             }
         }
 
         final Object[] finalObjectArray = { id };
-        final String sqlCountRows = "SELECT FOUND_ROWS()";
-        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlCountRows, sqlBuilder.toString(), finalObjectArray,
-                this.accountTransfersMapper);
+        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, this.accountTransfersMapper);
     }
 
     @Override
@@ -481,12 +491,12 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
             fromAccount = this.portfolioAccountReadPlatformService.retrieveOneByPaidInAdvance(fromAccountId, accountType);
 
             // override provided fromClient with client of account
-            mostRelevantFromClientId = fromAccount.clientId();
+            mostRelevantFromClientId = fromAccount.getClientId();
         }
 
         if (mostRelevantFromClientId != null) {
             fromClient = this.clientReadPlatformService.retrieveOne(mostRelevantFromClientId);
-            mostRelevantFromOfficeId = fromClient.officeId();
+            mostRelevantFromOfficeId = fromClient.getOfficeId();
             long[] loanStatus = null;
             if (mostRelevantFromAccountType == 1) {
                 loanStatus = new long[] { 300, 700 };
@@ -505,19 +515,19 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
         }
 
         // defaults
-        final LocalDate transferDate = DateUtils.getLocalDateOfTenant();
+        final LocalDate transferDate = DateUtils.getBusinessLocalDate();
         Collection<OfficeData> toOfficeOptions = fromOfficeOptions;
         Collection<ClientData> toClientOptions = null;
 
         if (toAccountId != null && fromAccount != null) {
             toAccount = this.portfolioAccountReadPlatformService.retrieveOne(toAccountId, mostRelevantToAccountType,
-                    fromAccount.currencyCode());
-            mostRelevantToClientId = toAccount.clientId();
+                    fromAccount.getCurrencyCode());
+            mostRelevantToClientId = toAccount.getClientId();
         }
 
         if (mostRelevantToClientId != null) {
             toClient = this.clientReadPlatformService.retrieveOne(mostRelevantToClientId);
-            mostRelevantToOfficeId = toClient.officeId();
+            mostRelevantToOfficeId = toClient.getOfficeId();
 
             toClientOptions = this.clientReadPlatformService.retrieveAllForLookupByOfficeId(mostRelevantToOfficeId);
 
@@ -547,12 +557,12 @@ public class AccountTransfersReadPlatformServiceImpl implements AccountTransfers
         sqlBuilder.append(" from m_account_transfer_details as det ");
         sqlBuilder.append(" inner join m_account_transfer_transaction as trans ");
         sqlBuilder.append(" on det.id = trans.account_transfer_details_id ");
-        sqlBuilder.append(" where trans.is_reversed = 0 ");
+        sqlBuilder.append(" where trans.is_reversed = false ");
         sqlBuilder.append(" and trans.transaction_date = ? ");
         sqlBuilder.append(" and IF(1=?, det.from_loan_account_id = ?, det.from_savings_account_id = ?) ");
 
-        return this.jdbcTemplate.queryForObject(sqlBuilder.toString(),
-                new Object[] { this.formatter.print(transactionDate), accountType, accountId, accountId }, BigDecimal.class);
+        return this.jdbcTemplate.queryForObject(sqlBuilder.toString(), BigDecimal.class, this.formatter.format(transactionDate),
+                accountType, accountId, accountId);
     }
 
 }

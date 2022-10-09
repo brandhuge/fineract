@@ -18,12 +18,16 @@
  */
 package org.apache.fineract.infrastructure.configuration.domain;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
 import org.apache.fineract.infrastructure.configuration.exception.GlobalConfigurationPropertyCannotBeModfied;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -32,6 +36,10 @@ import org.apache.fineract.infrastructure.security.exception.ForcePasswordResetE
 
 @Entity
 @Table(name = "c_configuration")
+@Getter
+@Setter
+@NoArgsConstructor
+@Accessors(chain = true)
 public class GlobalConfigurationProperty extends AbstractPersistableCustom {
 
     @Column(name = "name", nullable = false)
@@ -44,44 +52,16 @@ public class GlobalConfigurationProperty extends AbstractPersistableCustom {
     private Long value;
 
     @Column(name = "date_value", nullable = true)
-    private Date dateValue;
+    private LocalDate dateValue;
+
+    @Column(name = "string_value", nullable = true)
+    private String stringValue;
 
     @Column(name = "description", nullable = true)
     private String description;
 
     @Column(name = "is_trap_door", nullable = false)
     private boolean isTrapDoor;
-
-    protected GlobalConfigurationProperty() {
-        this.name = null;
-        this.enabled = false;
-        this.value = null;
-        this.dateValue = null;
-        this.description = null;
-        this.isTrapDoor = false;
-    }
-
-    public GlobalConfigurationProperty(final String name, final boolean enabled, final Long value, final Date dateValue,
-            final String description, final boolean isTrapDoor) {
-        this.name = name;
-        this.enabled = enabled;
-        this.value = value;
-        this.dateValue = dateValue;
-        this.description = description;
-        this.isTrapDoor = isTrapDoor;
-    }
-
-    public boolean isEnabled() {
-        return this.enabled;
-    }
-
-    public Long getValue() {
-        return this.value;
-    }
-
-    public Date getDateValue() {
-        return this.dateValue;
-    }
 
     public Map<String, Object> update(final JsonCommand command) {
 
@@ -108,9 +88,16 @@ public class GlobalConfigurationProperty extends AbstractPersistableCustom {
 
         final String dateValueParamName = "dateValue";
         if (command.isChangeInDateParameterNamed(dateValueParamName, this.dateValue)) {
-            final Date newDateValue = command.dateValueOfParameterNamed(dateValueParamName);
+            final LocalDate newDateValue = command.localDateValueOfParameterNamed(dateValueParamName);
             actualChanges.put(dateValueParamName, newDateValue);
             this.dateValue = newDateValue;
+        }
+
+        final String stringValueParamName = "stringValue";
+        if (command.isChangeInStringParameterNamed(stringValueParamName, this.stringValue)) {
+            final String newStringValue = command.stringValueOfParameterNamed(stringValueParamName);
+            actualChanges.put(stringValueParamName, newStringValue);
+            this.stringValue = newStringValue;
         }
 
         final String passwordPropertyName = "force-password-reset-days";
@@ -126,16 +113,13 @@ public class GlobalConfigurationProperty extends AbstractPersistableCustom {
     }
 
     public static GlobalConfigurationProperty newSurveyConfiguration(final String name) {
-        return new GlobalConfigurationProperty(name, false, null, null, null, false);
+        return new GlobalConfigurationProperty().setName(name);
     }
 
     public GlobalConfigurationPropertyData toData() {
-        return new GlobalConfigurationPropertyData(getName(), isEnabled(), getValue(), getDateValue(), this.getId(), this.description,
-                this.isTrapDoor);
-    }
+        return new GlobalConfigurationPropertyData().setName(getName()).setEnabled(isEnabled()).setValue(getValue())
+                .setDateValue(getDateValue()).setStringValue(getStringValue()).setId(this.getId()).setDescription(this.description)
+                .setTrapDoor(this.isTrapDoor);
 
-    public String getName() {
-        return this.name;
     }
-
 }

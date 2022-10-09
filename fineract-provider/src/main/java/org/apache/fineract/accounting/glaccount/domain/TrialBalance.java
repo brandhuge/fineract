@@ -20,17 +20,23 @@
 package org.apache.fineract.accounting.glaccount.domain;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
 @Entity
 @Table(name = "m_trial_balance")
+@Getter
+@Setter
+@NoArgsConstructor
+@Accessors(chain = true)
 public class TrialBalance extends AbstractPersistableCustom {
 
     @Column(name = "office_id", nullable = false)
@@ -43,54 +49,18 @@ public class TrialBalance extends AbstractPersistableCustom {
     private BigDecimal amount;
 
     @Column(name = "entry_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date entryDate;
+    private LocalDate entryDate;
 
     @Column(name = "created_date", nullable = true)
-    @Temporal(TemporalType.DATE)
-    private Date transactionDate;
+    private LocalDate transactionDate;
 
     @Column(name = "closing_balance", nullable = false)
     private BigDecimal closingBalance;
 
-    public static TrialBalance getInstance(final Long officeId, final Long glAccountId, final BigDecimal amount, final Date entryDate,
-            final Date transactionDate) {
-        return new TrialBalance(officeId, glAccountId, amount, entryDate, transactionDate);
-    }
-
-    private TrialBalance(final Long officeId, final Long glAccountId, final BigDecimal amount, final Date entryDate,
-            final Date transactionDate) {
-        this.officeId = officeId;
-        this.glAccountId = glAccountId;
-        this.amount = amount;
-        this.entryDate = entryDate;
-        this.transactionDate = transactionDate;
-    }
-
-    protected TrialBalance() {}
-
-    public Long getOfficeId() {
-        return officeId;
-    }
-
-    public Date getTransactionDate() {
-        return transactionDate;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setClosingBalance(final BigDecimal closingBalance) {
-        this.closingBalance = closingBalance;
-    }
-
-    public Date getEntryDate() {
-        return entryDate;
-    }
-
-    public Long getGlAccountId() {
-        return glAccountId;
+    public static TrialBalance getInstance(final Long officeId, final Long glAccountId, final BigDecimal amount, final LocalDate entryDate,
+            final LocalDate transactionDate) {
+        return new TrialBalance().setOfficeId(officeId).setGlAccountId(glAccountId).setAmount(amount).setEntryDate(entryDate)
+                .setTransactionDate(transactionDate);
     }
 
     @Override

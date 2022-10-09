@@ -18,9 +18,10 @@
  */
 package org.apache.fineract.infrastructure.documentmanagement.contentrepository;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.domain.Base64EncodedImage;
@@ -31,11 +32,9 @@ import org.apache.fineract.infrastructure.documentmanagement.exception.ContentMa
 
 public final class ContentRepositoryUtils {
 
-    private ContentRepositoryUtils() {
+    private static final SecureRandom random = new SecureRandom();
 
-    }
-
-    private static final Random random = new Random();
+    private ContentRepositoryUtils() {}
 
     public enum ImageMIMEtype {
 
@@ -115,15 +114,25 @@ public final class ContentRepositoryUtils {
         }
     }
 
+    public static ImageFileExtension imageExtensionFromFileName(String fileName) {
+        if (StringUtils.endsWith(fileName.toLowerCase(), ContentRepositoryUtils.ImageFileExtension.GIF.getValue())) {
+            return ContentRepositoryUtils.ImageFileExtension.GIF;
+        } else if (StringUtils.endsWith(fileName, ContentRepositoryUtils.ImageFileExtension.PNG.getValue())) {
+            return ContentRepositoryUtils.ImageFileExtension.PNG;
+        } else {
+            return ContentRepositoryUtils.ImageFileExtension.JPEG;
+        }
+    }
+
     /**
      * Validates that passed in Mime type maps to known image mime types
      *
      * @param mimeType
      */
     public static void validateImageMimeType(final String mimeType) {
-        if (!(mimeType.equalsIgnoreCase(ImageMIMEtype.GIF.getValue()) || mimeType.equalsIgnoreCase(ImageMIMEtype.JPEG.getValue())
-                || mimeType.equalsIgnoreCase(ImageMIMEtype.PNG.getValue()))) {
-            throw new ImageUploadException();
+        if ((!mimeType.equalsIgnoreCase(ImageMIMEtype.GIF.getValue()) && !mimeType.equalsIgnoreCase(ImageMIMEtype.JPEG.getValue())
+                && !mimeType.equalsIgnoreCase(ImageMIMEtype.PNG.getValue()))) {
+            throw new ImageUploadException(mimeType);
         }
     }
 
@@ -177,27 +186,19 @@ public final class ContentRepositoryUtils {
     }
 
     /**
-     * Generate a random String
-     *
-     * @return
+     * Generate a random String.
      */
+
+    @SuppressFBWarnings(value = {
+            "DMI_RANDOM_USED_ONLY_ONCE" }, justification = "False positive for random object created and used only once")
     public static String generateRandomString() {
         final String characters = "abcdefghijklmnopqrstuvwxyz123456789";
-        final int length = generateRandomNumber();
+        // length is a random number between 5 to 16
+        final int length = random.nextInt(11) + 5;
         final char[] text = new char[length];
         for (int i = 0; i < length; i++) {
             text[i] = characters.charAt(random.nextInt(characters.length()));
         }
         return new String(text);
-    }
-
-    /**
-     * Generate a random number between 5 to 16
-     *
-     * @return
-     */
-    public static int generateRandomNumber() {
-        final Random randomGenerator = new Random();
-        return randomGenerator.nextInt(11) + 5;
     }
 }

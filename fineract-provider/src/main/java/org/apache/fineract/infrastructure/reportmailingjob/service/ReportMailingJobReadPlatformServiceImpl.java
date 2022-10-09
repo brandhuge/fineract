@@ -20,6 +20,8 @@ package org.apache.fineract.infrastructure.reportmailingjob.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -27,8 +29,8 @@ import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
-import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.dataqueries.data.ReportData;
 import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJobData;
 import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJobEmailAttachmentFileFormat;
@@ -36,8 +38,6 @@ import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJob
 import org.apache.fineract.infrastructure.reportmailingjob.data.ReportMailingJobTimelineData;
 import org.apache.fineract.infrastructure.reportmailingjob.exception.ReportMailingJobNotFoundException;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -49,11 +49,16 @@ public class ReportMailingJobReadPlatformServiceImpl implements ReportMailingJob
 
     private final JdbcTemplate jdbcTemplate;
     private final ColumnValidator columnValidator;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
+    private final PaginationHelper paginationHelper;
 
     @Autowired
-    public ReportMailingJobReadPlatformServiceImpl(final RoutingDataSource dataSource, final ColumnValidator columnValidator) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    public ReportMailingJobReadPlatformServiceImpl(final JdbcTemplate jdbcTemplate, final ColumnValidator columnValidator,
+            DatabaseSpecificSQLGenerator sqlGenerator, PaginationHelper paginationHelper) {
+        this.jdbcTemplate = jdbcTemplate;
         this.columnValidator = columnValidator;
+        this.sqlGenerator = sqlGenerator;
+        this.paginationHelper = paginationHelper;
     }
 
     @Override
@@ -61,11 +66,10 @@ public class ReportMailingJobReadPlatformServiceImpl implements ReportMailingJob
         final StringBuilder sqlStringBuilder = new StringBuilder(200);
         final List<Object> queryParameters = new ArrayList<>();
         final ReportMailingJobMapper mapper = new ReportMailingJobMapper();
-        final PaginationHelper<ReportMailingJobData> paginationHelper = new PaginationHelper<>();
 
-        sqlStringBuilder.append("select SQL_CALC_FOUND_ROWS ");
+        sqlStringBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlStringBuilder.append(mapper.reportMailingJobSchema());
-        sqlStringBuilder.append(" where rmj.is_deleted = 0");
+        sqlStringBuilder.append(" where rmj.is_deleted = false");
 
         if (searchParameters.isOrderByRequested()) {
             sqlStringBuilder.append(" order by ").append(searchParameters.getOrderBy());
@@ -79,33 +83,33 @@ public class ReportMailingJobReadPlatformServiceImpl implements ReportMailingJob
         }
 
         if (searchParameters.isLimited()) {
-            sqlStringBuilder.append(" limit ").append(searchParameters.getLimit());
-
+            sqlStringBuilder.append(" ");
             if (searchParameters.isOffset()) {
-                sqlStringBuilder.append(" offset ").append(searchParameters.getOffset());
+                sqlStringBuilder.append(sqlGenerator.limit(searchParameters.getLimit(), searchParameters.getOffset()));
+            } else {
+                sqlStringBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
             }
         }
 
-        return paginationHelper.fetchPage(this.jdbcTemplate, "SELECT FOUND_ROWS()", sqlStringBuilder.toString(), queryParameters.toArray(),
-                mapper);
+        return paginationHelper.fetchPage(this.jdbcTemplate, sqlStringBuilder.toString(), queryParameters.toArray(), mapper);
     }
 
     @Override
     public Collection<ReportMailingJobData> retrieveAllActiveReportMailingJobs() {
         final ReportMailingJobMapper mapper = new ReportMailingJobMapper();
-        final String sql = "select " + mapper.reportMailingJobSchema() + " where rmj.is_deleted = 0 and is_active = 1"
+        final String sql = "select " + mapper.reportMailingJobSchema() + " where rmj.is_deleted = false and is_active = true"
                 + " order by rmj.name";
 
-        return this.jdbcTemplate.query(sql, mapper, new Object[] {});
+        return this.jdbcTemplate.query(sql, mapper); // NOSONAR
     }
 
     @Override
     public ReportMailingJobData retrieveReportMailingJob(final Long reportMailingJobId) {
         try {
             final ReportMailingJobMapper mapper = new ReportMailingJobMapper();
-            final String sql = "select " + mapper.reportMailingJobSchema() + " where rmj.id = ? and rmj.is_deleted = 0";
+            final String sql = "select " + mapper.reportMailingJobSchema() + " where rmj.id = ? and rmj.is_deleted = false";
 
-            return this.jdbcTemplate.queryForObject(sql, mapper, new Object[] { reportMailingJobId });
+            return this.jdbcTemplate.queryForObject(sql, mapper, new Object[] { reportMailingJobId }); // NOSONAR
         }
 
         catch (final EmptyResultDataAccessException ex) {
@@ -146,7 +150,7 @@ public class ReportMailingJobReadPlatformServiceImpl implements ReportMailingJob
             final Long id = rs.getLong("id");
             final String name = rs.getString("name");
             final String description = rs.getString("description");
-            final DateTime startDateTime = JdbcSupport.getDateTime(rs, "startDateTime");
+            final ZonedDateTime startDateTime = JdbcSupport.getDateTime(rs, "startDateTime");
             final String recurrence = rs.getString("recurrence");
             final LocalDate createdOnDate = JdbcSupport.getLocalDate(rs, "createdOnDate");
             final LocalDate updatedOnDate = JdbcSupport.getLocalDate(rs, "updatedOnDate");
@@ -164,8 +168,8 @@ public class ReportMailingJobReadPlatformServiceImpl implements ReportMailingJob
             }
 
             final String stretchyReportParamMap = rs.getString("stretchyReportParamMap");
-            final DateTime previousRunDateTime = JdbcSupport.getDateTime(rs, "previousRunDateTime");
-            final DateTime nextRunDateTime = JdbcSupport.getDateTime(rs, "nextRunDateTime");
+            final ZonedDateTime previousRunDateTime = JdbcSupport.getDateTime(rs, "previousRunDateTime");
+            final ZonedDateTime nextRunDateTime = JdbcSupport.getDateTime(rs, "nextRunDateTime");
             final String previousRunStatus = rs.getString("previousRunStatus");
             final String previousRunErrorLog = rs.getString("previousRunErrorLog");
             final String previousRunErrorMessage = rs.getString("previousRunErrorMessage");

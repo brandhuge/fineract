@@ -42,10 +42,7 @@ import org.apache.fineract.portfolio.note.exception.NoteResourceNotSupportedExce
 import org.apache.fineract.portfolio.note.serialization.NoteCommandFromApiJsonDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-@Service
 public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatformService {
 
     private static final Logger LOG = LoggerFactory.getLogger(NoteWritePlatformServiceJpaRepositoryImpl.class);
@@ -56,7 +53,6 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
     private final LoanTransactionRepository loanTransactionRepository;
     private final NoteCommandFromApiJsonDeserializer fromApiJsonDeserializer;
 
-    @Autowired
     public NoteWritePlatformServiceJpaRepositoryImpl(final NoteRepository noteRepository, final ClientRepositoryWrapper clientRepository,
             final GroupRepository groupRepository, final LoanRepositoryWrapper loanRepository,
             final LoanTransactionRepository loanTransactionRepository, final NoteCommandFromApiJsonDeserializer fromApiJsonDeserializer) {
@@ -78,7 +74,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         }
         final Note newNote = Note.clientNoteFromJson(client, command);
 
-        this.noteRepository.save(newNote);
+        this.noteRepository.saveAndFlush(newNote);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -105,7 +101,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         final Group group = this.groupRepository.findById(resourceId).orElseThrow(() -> new GroupNotFoundException(resourceId));
         final Note newNote = Note.groupNoteFromJson(group, command);
 
-        this.noteRepository.save(newNote);
+        this.noteRepository.saveAndFlush(newNote);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -123,7 +119,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         final String note = command.stringValueOfParameterNamed("note");
         final Note newNote = Note.loanNote(loan, note);
 
-        this.noteRepository.save(newNote);
+        this.noteRepository.saveAndFlush(newNote);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -145,7 +141,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         final String note = command.stringValueOfParameterNamed("note");
         final Note newNote = Note.loanTransactionNote(loan, loanTransaction, note);
 
-        this.noteRepository.save(newNote);
+        this.noteRepository.saveAndFlush(newNote);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -238,7 +234,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
 
         final Client client = this.clientRepository.findOneWithNotFoundDetection(resourceId);
 
-        final Note noteForUpdate = this.noteRepository.findByClientIdAndId(resourceId, noteId);
+        final Note noteForUpdate = this.noteRepository.findByClientAndId(client, noteId);
         if (noteForUpdate == null) {
             throw new NoteNotFoundException(noteId, resourceId, type.name().toLowerCase());
         }
@@ -267,7 +263,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
 
         final Group group = this.groupRepository.findById(resourceId).orElseThrow(() -> new GroupNotFoundException(resourceId));
 
-        final Note noteForUpdate = this.noteRepository.findByGroupIdAndId(resourceId, noteId);
+        final Note noteForUpdate = this.noteRepository.findByGroupAndId(group, noteId);
 
         if (noteForUpdate == null) {
             throw new NoteNotFoundException(noteId, resourceId, type.name().toLowerCase());
@@ -295,7 +291,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         final NoteType type = NoteType.LOAN;
 
         final Loan loan = this.loanRepository.findOneWithNotFoundDetection(resourceId);
-        final Note noteForUpdate = this.noteRepository.findByLoanIdAndId(resourceId, noteId);
+        final Note noteForUpdate = this.noteRepository.findByLoanAndId(loan, noteId);
         if (noteForUpdate == null) {
             throw new NoteNotFoundException(noteId, resourceId, type.name().toLowerCase());
         }
@@ -321,7 +317,7 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
                 .orElseThrow(() -> new LoanTransactionNotFoundException(resourceId));
         final Loan loan = loanTransaction.getLoan();
 
-        final Note noteForUpdate = this.noteRepository.findByLoanTransactionIdAndId(resourceId, noteId);
+        final Note noteForUpdate = this.noteRepository.findByLoanTransactionAndId(loanTransaction, noteId);
 
         if (noteForUpdate == null) {
             throw new NoteNotFoundException(noteId, resourceId, type.name().toLowerCase());
@@ -423,22 +419,29 @@ public class NoteWritePlatformServiceJpaRepositoryImpl implements NoteWritePlatf
         switch (type) {
             case CLIENT: {
                 resourceId = command.getClientId();
-                noteForUpdate = this.noteRepository.findByClientIdAndId(resourceId, noteId);
+                final Client client = this.clientRepository.findOneWithNotFoundDetection(resourceId);
+                noteForUpdate = this.noteRepository.findByClientAndId(client, noteId);
             }
             break;
             case GROUP: {
-                resourceId = command.getGroupId();
-                noteForUpdate = this.noteRepository.findByGroupIdAndId(resourceId, noteId);
+                final Long groupId = command.getGroupId();
+                resourceId = groupId;
+                Group group = this.groupRepository.findById(groupId).orElseThrow(() -> new GroupNotFoundException(groupId));
+                noteForUpdate = this.noteRepository.findByGroupAndId(group, noteId);
             }
             break;
             case LOAN: {
                 resourceId = command.getLoanId();
-                noteForUpdate = this.noteRepository.findByLoanIdAndId(resourceId, noteId);
+                final Loan loan = this.loanRepository.findOneWithNotFoundDetection(resourceId);
+                noteForUpdate = this.noteRepository.findByLoanAndId(loan, noteId);
             }
             break;
             case LOAN_TRANSACTION: {
                 resourceId = command.subentityId();
-                noteForUpdate = this.noteRepository.findByLoanTransactionIdAndId(resourceId, noteId);
+                final Long loanTransactionId = resourceId;
+                final LoanTransaction loanTransaction = this.loanTransactionRepository.findById(loanTransactionId)
+                        .orElseThrow(() -> new LoanTransactionNotFoundException(loanTransactionId));
+                noteForUpdate = this.noteRepository.findByLoanTransactionAndId(loanTransaction, noteId);
             }
             break;
             // case SAVING_ACCOUNT: {

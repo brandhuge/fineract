@@ -19,11 +19,11 @@
 package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.joda.time.LocalDate;
 
 /**
  * A wrapper around loan schedule related data exposing needed behaviour by loan.
@@ -106,7 +106,7 @@ public class LoanRepaymentScheduleProcessingWrapper {
                         if (loanCharge.getLoan() != null && loanCharge.isSpecifiedDueDate()
                                 && loanCharge.getLoan().isMultiDisburmentLoan()) {
                             for (final LoanDisbursementDetails loanDisbursementDetails : loanCharge.getLoan().getDisbursementDetails()) {
-                                if (!loanDisbursementDetails.expectedDisbursementDate().after(loanCharge.getDueDate())) {
+                                if (!loanDisbursementDetails.expectedDisbursementDate().isAfter(loanCharge.getDueDate())) {
                                     amount = amount.add(loanDisbursementDetails.principal());
                                 }
                             }

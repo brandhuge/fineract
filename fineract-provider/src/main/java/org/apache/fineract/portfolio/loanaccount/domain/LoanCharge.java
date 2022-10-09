@@ -20,13 +20,14 @@ package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import javax.persistence.CascadeType;
@@ -38,8 +39,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import javax.persistence.UniqueConstraint;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
@@ -52,10 +52,9 @@ import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
-import org.joda.time.LocalDate;
 
 @Entity
-@Table(name = "m_loan_charge")
+@Table(name = "m_loan_charge", uniqueConstraints = { @UniqueConstraint(columnNames = { "external_id" }, name = "external_id") })
 public class LoanCharge extends AbstractPersistableCustom {
 
     @ManyToOne(optional = false)
@@ -69,9 +68,8 @@ public class LoanCharge extends AbstractPersistableCustom {
     @Column(name = "charge_time_enum", nullable = false)
     private Integer chargeTime;
 
-    @Temporal(TemporalType.DATE)
     @Column(name = "due_for_collection_as_of_date")
-    private Date dueDate;
+    private LocalDate dueDate;
 
     @Column(name = "charge_calculation_enum")
     private Integer chargeCalculation;
@@ -124,11 +122,17 @@ public class LoanCharge extends AbstractPersistableCustom {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    @Column(name = "external_id")
+    private String externalId;
+
     @OneToOne(mappedBy = "loancharge", cascade = CascadeType.ALL, optional = true, orphanRemoval = true, fetch = FetchType.EAGER)
     private LoanOverdueInstallmentCharge overdueInstallmentCharge;
 
     @OneToOne(mappedBy = "loancharge", cascade = CascadeType.ALL, optional = true, orphanRemoval = true, fetch = FetchType.EAGER)
     private LoanTrancheDisbursementCharge loanTrancheDisbursementCharge;
+
+    @OneToMany(mappedBy = "loanCharge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<LoanChargePaidBy> loanChargePaidBySet;
 
     public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command) {
         final LocalDate dueDate = command.localDateValueOfParameterNamed("dueDate");
@@ -142,7 +146,8 @@ public class LoanCharge extends AbstractPersistableCustom {
 
     public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command,
             final LocalDate dueDate) {
-        final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
+        final Locale locale = command.extractLocale();
+        final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount", locale);
 
         final ChargeTimeType chargeTime = null;
         final ChargeCalculationType chargeCalculation = null;
@@ -153,7 +158,7 @@ public class LoanCharge extends AbstractPersistableCustom {
                 if (command.hasParameter("principal")) {
                     amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal");
                 } else {
-                    amountPercentageAppliedTo = loan.getPrincpal().getAmount();
+                    amountPercentageAppliedTo = loan.getPrincipal().getAmount();
                 }
             break;
             case PERCENT_OF_AMOUNT_AND_INTEREST:
@@ -161,7 +166,7 @@ public class LoanCharge extends AbstractPersistableCustom {
                     amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal")
                             .add(command.bigDecimalValueOfParameterNamed("interest"));
                 } else {
-                    amountPercentageAppliedTo = loan.getPrincpal().getAmount().add(loan.getTotalInterest());
+                    amountPercentageAppliedTo = loan.getPrincipal().getAmount().add(loan.getTotalInterest());
                 }
             break;
             case PERCENT_OF_INTEREST:
@@ -192,14 +197,17 @@ public class LoanCharge extends AbstractPersistableCustom {
         if (chargeDefinition.getChargeTimeType().equals(ChargeTimeType.SPECIFIED_DUE_DATE.getValue()) && loan.isMultiDisburmentLoan()) {
             amountPercentageAppliedTo = BigDecimal.ZERO;
             for (final LoanDisbursementDetails loanDisbursementDetails : loan.getDisbursementDetails()) {
-                if (!loanDisbursementDetails.expectedDisbursementDate().after(dueDate.toDate())) {
+                if (!loanDisbursementDetails.expectedDisbursementDate().isAfter(dueDate)) {
                     amountPercentageAppliedTo = amountPercentageAppliedTo.add(loanDisbursementDetails.principal());
                 }
             }
         }
 
-        return new LoanCharge(loan, chargeDefinition, amountPercentageAppliedTo, amount, chargeTime, chargeCalculation, dueDate,
-                chargePaymentMode, null, loanCharge);
+        LoanCharge newLoanCharge = new LoanCharge(loan, chargeDefinition, amountPercentageAppliedTo, amount, chargeTime, chargeCalculation,
+                dueDate, chargePaymentMode, null, loanCharge);
+        final String externalId = command.stringValueOfParameterNamedAllowingNull("externalId");
+        newLoanCharge.setExternalId(externalId);
+        return newLoanCharge;
     }
 
     /*
@@ -239,7 +247,7 @@ public class LoanCharge extends AbstractPersistableCustom {
                         chargeDefinition.getName());
             }
 
-            this.dueDate = dueDate.toDate();
+            this.dueDate = dueDate;
         } else {
             this.dueDate = null;
         }
@@ -258,6 +266,7 @@ public class LoanCharge extends AbstractPersistableCustom {
         if (chargePaymentMode != null) {
             this.chargePaymentMode = chargePaymentMode.getValue();
         }
+
         populateDerivedFields(loanPrincipal, chargeAmount, numberOfRepayments, loanCharge);
         this.paid = determineIfFullyPaid();
     }
@@ -344,6 +353,10 @@ public class LoanCharge extends AbstractPersistableCustom {
         }
     }
 
+    public void resetOutstandingAmount(final BigDecimal amountOutstanding) {
+        this.amountOutstanding = amountOutstanding;
+    }
+
     public Money waive(final MonetaryCurrency currency, final Integer loanInstallmentNumber) {
         if (isInstalmentFee()) {
             final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
@@ -382,7 +395,7 @@ public class LoanCharge extends AbstractPersistableCustom {
     public void update(final BigDecimal amount, final LocalDate dueDate, final BigDecimal loanPrincipal, Integer numberOfRepayments,
             BigDecimal loanCharge) {
         if (dueDate != null) {
-            this.dueDate = dueDate.toDate();
+            this.dueDate = dueDate;
         }
 
         if (amount != null) {
@@ -430,16 +443,16 @@ public class LoanCharge extends AbstractPersistableCustom {
                     // much amount disbursed.
                     if (this.loan.isMultiDisburmentLoan() && this.isSpecifiedDueDate()) {
                         for (final LoanDisbursementDetails loanDisbursementDetails : this.loan.getDisbursementDetails()) {
-                            if (!loanDisbursementDetails.expectedDisbursementDate().after(this.getDueDate())) {
+                            if (!loanDisbursementDetails.expectedDisbursementDate().isAfter(this.getDueDate())) {
                                 amountPercentageAppliedTo = amountPercentageAppliedTo.add(loanDisbursementDetails.principal());
                             }
                         }
                     } else {
-                        amountPercentageAppliedTo = this.loan.getPrincpal().getAmount();
+                        amountPercentageAppliedTo = this.loan.getPrincipal().getAmount();
                     }
                 break;
                 case PERCENT_OF_AMOUNT_AND_INTEREST:
-                    amountPercentageAppliedTo = this.loan.getPrincpal().getAmount().add(this.loan.getTotalInterest());
+                    amountPercentageAppliedTo = this.loan.getPrincipal().getAmount().add(this.loan.getTotalInterest());
                 break;
                 case PERCENT_OF_INTEREST:
                     amountPercentageAppliedTo = this.loan.getTotalInterest();
@@ -469,8 +482,7 @@ public class LoanCharge extends AbstractPersistableCustom {
             actualChanges.put("dateFormat", dateFormatAsInput);
             actualChanges.put("locale", localeAsInput);
 
-            final LocalDate newValue = command.localDateValueOfParameterNamed(dueDateParamName);
-            this.dueDate = newValue.toDate();
+            this.dueDate = command.localDateValueOfParameterNamed(dueDateParamName);
         }
 
         final String amountParamName = "amount";
@@ -533,9 +545,11 @@ public class LoanCharge extends AbstractPersistableCustom {
             for (final LoanInstallmentCharge chargePerInstallment : oldChargeInstallments) {
                 if (index == loanChargePerInstallmentArray.length) {
                     remove.add(chargePerInstallment);
-                    chargePerInstallment.updateInstallment(null);
+                    chargePerInstallment.getInstallment().getInstallmentCharges().remove(chargePerInstallment);
                 } else {
-                    chargePerInstallment.copyFrom(loanChargePerInstallmentArray[index++]);
+                    LoanInstallmentCharge newLoanInstallmentCharge = loanChargePerInstallmentArray[index++];
+                    newLoanInstallmentCharge.getInstallment().getInstallmentCharges().remove(newLoanInstallmentCharge);
+                    chargePerInstallment.copyFrom(newLoanInstallmentCharge);
                 }
             }
             this.loanInstallmentCharge.removeAll(remove);
@@ -576,14 +590,10 @@ public class LoanCharge extends AbstractPersistableCustom {
     }
 
     public LocalDate getDueLocalDate() {
-        LocalDate dueDate = null;
-        if (this.dueDate != null) {
-            dueDate = new LocalDate(this.dueDate);
-        }
-        return dueDate;
+        return this.dueDate;
     }
 
-    public Date getDueDate() {
+    public LocalDate getDueDate() {
         return this.dueDate;
     }
 
@@ -867,6 +877,18 @@ public class LoanCharge extends AbstractPersistableCustom {
         return null;
     }
 
+    public void setInstallmentLoanCharge(final LoanInstallmentCharge loanInstallmentCharge, final Integer installmentNumber) {
+        LoanInstallmentCharge loanInstallmentChargeToBeRemoved = null;
+        for (final LoanInstallmentCharge loanChargePerInstallment : this.loanInstallmentCharge) {
+            if (installmentNumber.equals(loanChargePerInstallment.getRepaymentInstallment().getInstallmentNumber().intValue())) {
+                loanInstallmentChargeToBeRemoved = loanChargePerInstallment;
+                break;
+            }
+        }
+        this.loanInstallmentCharge.remove(loanInstallmentChargeToBeRemoved);
+        this.loanInstallmentCharge.add(loanInstallmentCharge);
+    }
+
     public void clearLoanInstallmentCharges() {
         this.loanInstallmentCharge.clear();
     }
@@ -1019,6 +1041,10 @@ public class LoanCharge extends AbstractPersistableCustom {
         return paidChargePerInstallment;
     }
 
+    public Set<LoanChargePaidBy> getLoanChargePaidBySet() {
+        return this.loanChargePaidBySet;
+    }
+
     public Loan getLoan() {
         return this.loan;
     }
@@ -1034,4 +1060,21 @@ public class LoanCharge extends AbstractPersistableCustom {
     public boolean isDueDateCharge() {
         return this.dueDate != null;
     }
+
+    public void setAmountWaived(final BigDecimal amountWaived) {
+        this.amountWaived = amountWaived;
+    }
+
+    public void undoWaived() {
+        this.waived = false;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
+
 }

@@ -18,7 +18,13 @@
  */
 package org.apache.fineract.infrastructure.jobs.service;
 
-import java.util.Random;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.util.HashMap;
+import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
+import org.apache.fineract.infrastructure.businessdate.service.BusinessDateReadPlatformService;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.security.service.TenantDetailsService;
@@ -29,23 +35,21 @@ import org.quartz.Trigger.CompletedExecutionInstruction;
 import org.quartz.TriggerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 public class SchedulerTriggerListener implements TriggerListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(SchedulerTriggerListener.class);
+    private static final SecureRandom random = new SecureRandom();
 
     private final SchedularWritePlatformService schedularService;
     private final TenantDetailsService tenantDetailsService;
 
-    @Autowired
-    public SchedulerTriggerListener(final SchedularWritePlatformService schedularService, final TenantDetailsService tenantDetailsService) {
-        this.schedularService = schedularService;
-        this.tenantDetailsService = tenantDetailsService;
-
-    }
+    private final BusinessDateReadPlatformService businessDateReadPlatformService;
 
     @Override
     public String getName() {
@@ -58,10 +62,15 @@ public class SchedulerTriggerListener implements TriggerListener {
     }
 
     @Override
+    @SuppressFBWarnings(value = {
+            "DMI_RANDOM_USED_ONLY_ONCE" }, justification = "False positive for random object created and used only once")
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public boolean vetoJobExecution(final Trigger trigger, final JobExecutionContext context) {
         final String tenantIdentifier = trigger.getJobDataMap().getString(SchedulerServiceConstants.TENANT_IDENTIFIER);
         final FineractPlatformTenant tenant = this.tenantDetailsService.loadTenantById(tenantIdentifier);
         ThreadLocalContextUtil.setTenant(tenant);
+        HashMap<BusinessDateType, LocalDate> businessDates = businessDateReadPlatformService.getBusinessDates();
+        ThreadLocalContextUtil.setBusinessDates(businessDates);
         final JobKey key = trigger.getJobKey();
         final String jobKey = key.getName() + SchedulerServiceConstants.JOB_KEY_SEPERATOR + key.getGroup();
         String triggerType = SchedulerServiceConstants.TRIGGER_TYPE_CRON;
@@ -81,7 +90,6 @@ public class SchedulerTriggerListener implements TriggerListener {
                 LOG.warn("vetoJobExecution() not able to acquire the lock to update job running status at retry {} (of {}) for JobKey: {}",
                         numberOfRetries, maxNumberOfRetries, jobKey, exception);
                 try {
-                    Random random = new Random();
                     int randomNum = random.nextInt(maxIntervalBetweenRetries + 1);
                     Thread.sleep(1000 + (randomNum * 1000));
                     numberOfRetries = numberOfRetries + 1;
